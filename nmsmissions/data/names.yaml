@@ -1,0 +1,15 @@
+# Fallback log titles for mission ids.
+#
+# The No Man's Sky wiki names quest chapters (Awakenings, They Who Returned,
+# Audience with the Autophage, The Atlas Path, Atlas Eternal, In Stellar
+# Multitudes) but it does not publish the save id (^ROBOMISS_0 and the rest)
+# for each chapter. Those titles are not listed here, because guessing the
+# id would put the wrong name on a step.
+#
+# Add a row only when you have checked that this exact id uses that log title.
+# Leave the name out otherwise. The viewer prints "-" for a missing name.
+#
+# Prefer --game-files pointed at your extracted LANGUAGE and MISSIONS text.
+# Those files are not bundled.
+
+missions: {}

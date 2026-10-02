@@ -1,0 +1,24 @@
+{
+  "Mapping": [
+    {"Key": "vLc", "Value": "BaseContext"},
+    {"Key": "2YS", "Value": "ExpeditionContext"},
+    {"Key": "XTp", "Value": "ActiveContext"},
+    {"Key": "6f=", "Value": "PlayerStateData"},
+    {"Key": "dwb", "Value": "MissionProgress"},
+    {"Key": "p0c", "Value": "Mission"},
+    {"Key": "tW6", "Value": "Progress"},
+    {"Key": "8?J", "Value": "Data"},
+    {"Key": "Kex", "Value": "Stat"},
+    {"Key": "@EL", "Value": "Seed"},
+    {"Key": ";R7", "Value": "CurrentMissionID"},
+    {"Key": "Mg<", "Value": "PreviousMissionID"},
+    {"Key": "yq:", "Value": "MissionVersion"},
+    {"Key": "Kg6", "Value": "HasDiscoveredPurpleSystems"},
+    {"Key": "SwW", "Value": "PurpleSystemsUnlocked"},
+    {"Key": "5hy", "Value": "FirstPurpleSystemUA"},
+    {"Key": "5?q", "Value": "HasGalacticMapRequestFirstPurple"},
+    {"Key": ";9U", "Value": "HasGalacticMapRequestAllPurples"},
+    {"Key": "cPt", "Value": "BuildersKnown"},
+    {"Key": "4kj", "Value": "KnownTech"}
+  ]
+}

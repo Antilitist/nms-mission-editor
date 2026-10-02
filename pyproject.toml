@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nmsmissions"
+version = "1.0.6"
+description = "No Man's Sky mission chain viewer and copy editor"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["lz4>=4", "PyYAML>=6", "hgpaktool>=1.1"]
+
+[project.scripts]
+nmsmissions = "nmsmissions.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["nmsmissions*"]
+
+[tool.setuptools.package-data]
+nmsmissions = ["data/**/*"]

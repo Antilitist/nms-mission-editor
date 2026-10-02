@@ -1,0 +1,345 @@
+# Quest-line order for the read-only mission viewer.
+# Add a chain, or insert a step, without changing code.
+# `requires` names other chain ids that should be finished first.
+# `optional: true` shows a step but does not count it as "the next thing to do".
+# A completion value of -1 (see the mission tables) is treated the same way:
+# the finished game leaves that branch at -1, so it must not block the chain.
+#
+# Unlock order, from the NMS wiki as written in the mission spec:
+#   Artemis Path (through The Purge) -> They Who Returned
+#   They Who Returned + Atlas Path -> In Stellar Multitudes
+# They Who Returned also needs a Harmonic Camp seal (Aeron Turbojet). That
+# is not a mission id, so it is only a note on that chain.
+# Atlas Path is a prerequisite of In Stellar Multitudes, not of They Who Returned.
+# Edit `requires` if you want a different graph.
+#
+# wiki is a No Man's Sky Wiki page. wiki_confirmed is false when the page
+# name is only the chain title with spaces turned into underscores.
+# A step may set its own wiki. Without one, the tool searches for the title.
+
+chains:
+  - id: artemis
+    title: Artemis Path
+    wiki: https://nomanssky.fandom.com/wiki/Artemis_Path
+    wiki_confirmed: true
+    group: story
+    requires: []
+    note: "Main story through The Purge. A finished log shows New Beginnings."
+    steps:
+      - "^ACT1_STEP1"
+      - "^ACT1_STEP2"
+      - "^ACT1_STEP3"
+      - "^ACT1_STEP4"
+      - "^ACT1_STEP5"
+      - "^ACT1_STEP6"
+      - "^ACT1_STEP7"
+      - "^ACT1_STEP8"
+      - "^ACT1_STEP9"
+      - "^ACT1_STEP10"
+      - "^ACT1_STEP11"
+      - "^ACT1_STEP12"
+      - "^ACT1_STEP13"
+      - "^ACT2_STEP1"
+      - "^ACT2_STEP2"
+      - "^ACT2_STEP3"
+      - "^ACT2_STEP4"
+      - "^ACT2_STEP5"
+      - "^ACT2_STEP6"
+      - "^ACT2_STEP7"
+      - "^ACT2_STEP8"
+      - "^ACT2_STEP9"
+      - "^ACT2_STEP10"
+      - "^ACT2_STEP11"
+      - "^ACT2_STEP12"
+      - "^ACT2_STEP13"
+      - "^ACT3_STEP1"
+      - "^ACT3_STEP2"
+      - "^ACT3_STEP3"
+      - "^ACT3_STEP4"
+  - id: atlas
+    title: Atlas Path
+    wiki: https://nomanssky.fandom.com/wiki/The_Atlas_Path
+    wiki_confirmed: true
+    group: story
+    requires: []
+    note: "Finishes at Atlas Eternal. Required, with They Who Returned, before In Stellar Multitudes. POI_ATLAS_COMMS and SENTMISS_ATLAS are optional and listed here, not in They Who Returned: a 7.05 save had both already done while that quest was still on its first step."
+    steps:
+      - "^ATLAS1"
+      - "^ATLAS2"
+      - "^ATLAS3"
+      - "^ATLAS4"
+      - "^ATLAS5"
+      - "^ATLAS6"
+      - "^ATLAS7"
+      - "^ATLAS8"
+      - "^ATLAS9"
+      - "^ATLAS10"
+      - "^ATLAS11"
+      - id: "^ATLAS_LORE"
+        optional: true
+      - "^ATLAS_LOOP_STAR"
+      - "^AP11_STAR"
+      - "^REMEMBRANCE"
+      - "^HAS_STARSEED"
+      - id: "^ATLAS_LOOP_DENY"
+        optional: true
+      - id: "^POI_ATLAS_COMMS"
+        optional: true
+      - id: "^SENTMISS_ATLAS"
+        optional: true
+  - id: twr
+    title: They Who Returned
+    wiki: https://nomanssky.fandom.com/wiki/They_Who_Returned
+    wiki_confirmed: true
+    group: story
+    requires: [artemis]
+    note: "Also needs a Harmonic Camp seal (Aeron Turbojet customization). That is not a mission id. Step order inside this chain is best-effort."
+    steps:
+      - "^ROBOT_INTRO"
+      - "^ROBOMISS_0"
+      - "^ROBOMISS_1"
+      - "^ROBOMISS_1A"
+      - "^ROBOMISS_2"
+      - "^ROBOMISS_3_BUI"
+      - "^ROBOMISS_3_NADA"
+      - "^ROBOMISS_4"
+      - "^ROBOMISS_BOAT"
+      - "^POI_MEMORYBOAT"
+      - id: "^SENT_MISS_LORE"
+        optional: true
+      - id: "^ROBOMISS_LORE_"
+        optional: true
+      - "^ROBOM_ATLAS3"
+      - "^ROBOM_ATLAS3_H"
+      - "^ROBOM_HOPE"
+      - "^ROBOM_NADAR2"
+      - "^ROBOM_STAFF_A"
+      - "^ROBOM_STAFF_B"
+      - "^ROBOM_STAFF_C"
+  - id: ism
+    title: In Stellar Multitudes
+    wiki: https://nomanssky.fandom.com/wiki/In_Stellar_Multitudes
+    wiki_confirmed: true
+    group: story
+    requires: [twr, atlas]
+    note: "Starts on a pulse in open space after They Who Returned and the Atlas Path. Grants the Atlantid Drive and reveals purple stars. Step order is best-effort."
+    steps:
+      - "^PURPM1"
+      - "^PURPM2"
+      - "^PURPM3"
+      - "^PURPM_BOAT"
+      - "^POI_PURPM_BOAT"
+      - id: "^CORE_LORE"
+        optional: true
+  - id: dreams
+    title: Dreams of the Deep
+    wiki: https://nomanssky.fandom.com/wiki/Dreams_of_the_Deep
+    wiki_confirmed: true
+    group: side
+    requires: []
+    steps:
+      - "^WATERSTORY1"
+      - "^WATERSTORY2"
+      - "^WATERSTORY3"
+      - "^WATERSTORY4"
+      - "^WATERSTORY5"
+      - id: "^WATERSTORY_LORE"
+        optional: true
+  - id: starbirth
+    title: Starbirth
+    wiki: https://nomanssky.fandom.com/wiki/Starbirth
+    wiki_confirmed: true
+    group: side
+    requires: []
+    note: "Living-ship chain. Order is best-effort."
+    steps:
+      - "^BIO_SHIP1"
+      - "^BIO_SHIP2"
+      - "^BIO_SHIP3"
+      - "^BIOSHIP3_POI"
+      - "^BIO_SHIP4"
+      - "^BIO_SHIP5"
+      - "^EGG_HELP"
+      - "^EGG5_RECOVERY"
+      - "^BIO_HATCHED"
+      - id: "^BIOSHIP_LORE"
+        optional: true
+  - id: rebel
+    title: Under a Rebel Star
+    wiki: https://nomanssky.fandom.com/wiki/Under_a_Rebel_Star
+    wiki_confirmed: true
+    group: side
+    requires: []
+    note: "Order is best-effort."
+    steps:
+      - "^PIRATE_INIT"
+      - "^PIRATECLUE_COMM"
+      - "^PIRATES1"
+      - "^PIRATES2"
+      - "^PIRATES3"
+      - "^PIRATE_HIDE"
+      - "^PIRATE_STATION"
+      - "^PIRATE_MYSTERY1"
+      - "^PIRATE_MYSTERY2"
+      - "^PIRATE_MYSTERY3"
+      - "^PIRATE_MYSTERY4"
+      - id: "^PIRATES_LORE"
+        optional: true
+  - id: industrial
+    title: Industrial Cleanup
+    wiki: https://nomanssky.fandom.com/wiki/Industrial_Cleanup
+    wiki_confirmed: false
+    group: side
+    requires: []
+    note: "HAUL_TUT_INTRO stays at -1 in a finished save, so it does not block the chain."
+    steps:
+      - id: "^HAUL_TUT_INTRO"
+        optional: true
+      - "^HAUL_TUT"
+  - id: base_archives
+    title: Base Computer Archives
+    wiki: https://nomanssky.fandom.com/wiki/Base_Computer_Archives
+    wiki_confirmed: false
+    group: base
+    requires: []
+    caution: "Not safe to auto-complete. Some steps need a seed or other state from a system you visited. This tool only reads them."
+    steps:
+      - "^BASE_UPGRADE1"
+      - "^BASE_UPGRADE2"
+      - "^BASE_UPGRADE3"
+      - "^BASE_UPGRADE4"
+      - "^BASE_UPGRADE5"
+      - "^BASE_UPGRADE6"
+      - "^BASE_UPGRADE7"
+      - "^BASE_UPGRADE8"
+      - "^BASE_UPGRADE9"
+      - "^BASE_UPGRADE10"
+      - "^BASE_UPGRADE11"
+      - "^BASE_UPGRADE12"
+      - "^BASE_UPGRADE13"
+      - "^BASE_UPGRADE14"
+      - "^BASE_UPGRADE15"
+      - "^BASE_UPGRADE16"
+      - "^BASE_UPGRADE17"
+      - "^BASE_UPGRADE18"
+      - "^BASE_UPGRADE19"
+      - "^BASE_UPGRADE20"
+      - "^BASE_UPGRADE21"
+      - id: "^BASECOMP_LORE"
+        optional: true
+      - "^BASE_SAFETY"
+  - id: exocraft
+    title: Exocraft Technician
+    wiki: https://nomanssky.fandom.com/wiki/Exocraft_Technician
+    wiki_confirmed: false
+    group: base
+    requires: []
+    caution: "Not safe to auto-complete. Some steps need a seed or other state from a system you visited. This tool only reads them."
+    steps:
+      - "^EXOTUT1"
+      - "^EXOTUT2"
+      - "^EXOTUT3"
+      - "^EXOTUT4"
+      - "^EXOTUT5"
+      - "^EXOTUT6"
+      - "^EXOTUT7"
+      - "^EXOTUT8"
+      - "^EXOTUT9"
+      - "^EXOTUT10"
+      - "^EXOTUT11"
+      - "^EXOTUT12"
+      - "^EXOTUT13"
+      - "^EXOTUT_LOOP"
+      - id: "^EXOTUT_LORE"
+        optional: true
+      - "^DM_EXOCRAFT"
+  - id: farmer
+    title: Farmer
+    wiki: https://nomanssky.fandom.com/wiki/Farmer
+    wiki_confirmed: false
+    group: base
+    requires: []
+    caution: "Not safe to auto-complete. Some steps need a seed or other state from a system you visited. This tool only reads them."
+    steps:
+      - "^FARMER1"
+      - "^FARMER2"
+      - "^FARMER3"
+      - "^FARMER4"
+      - "^FARMER5"
+      - "^FARMER6"
+      - "^FARMER7"
+      - "^FARMER8"
+      - "^FARMER9"
+      - "^FARMER10"
+      - "^FARMER_LOOP"
+      - id: "^FARMER_LORE"
+        optional: true
+      - "^DM_FARMER"
+  - id: overseer
+    title: Overseer
+    wiki: https://nomanssky.fandom.com/wiki/Overseer
+    wiki_confirmed: false
+    group: base
+    requires: []
+    note: "START_BASE_UP is the shared base intro. It is listed here so it has a place in the sequence."
+    caution: "Not safe to auto-complete. Some steps need a seed or other state from a system you visited. This tool only reads them."
+    steps:
+      - "^START_BASE_UP"
+      - "^OVERSEER1"
+      - "^OVERSEER2"
+      - "^OVERSEER3"
+      - "^OVERSEER4"
+      - "^OVERSEER5"
+      - "^OVERSEER6"
+      - "^OVERSEER7"
+      - "^OVERSEER8"
+      - "^OVERSEER9"
+      - "^OVERSEER10"
+      - "^OVERSEER_LOOP"
+      - id: "^OVERSEER_LORE"
+        optional: true
+      - "^DM_OVERSEER"
+  - id: scientist
+    title: Scientist
+    wiki: https://nomanssky.fandom.com/wiki/Scientist
+    wiki_confirmed: false
+    group: base
+    requires: []
+    caution: "Not safe to auto-complete. Some steps need a seed or other state from a system you visited. This tool only reads them."
+    steps:
+      - "^SCI_CATCHUP"
+      - "^SCI_CATCHUP2"
+      - "^SCI_CATCHUP3"
+      - "^SCIENTIST1"
+      - "^SCIENTIST2"
+      - "^SCIENTIST3"
+      - "^SCIENTIST4"
+      - "^SCIENTIST5"
+      - "^SCIENTIST6"
+      - "^SCIENTIST7"
+      - "^SCIENTIST8"
+      - "^SCIENTIST9"
+      - "^SCIENTIST_LOOP"
+      - id: "^SCIENTIST_LORE"
+        optional: true
+  - id: weapons
+    title: Weapons Specialist
+    wiki: https://nomanssky.fandom.com/wiki/Weapons_Specialist
+    wiki_confirmed: false
+    group: base
+    requires: []
+    caution: "Not safe to auto-complete. Some steps need a seed or other state from a system you visited. This tool only reads them."
+    steps:
+      - "^WEAPGUY1"
+      - "^WEAPGUY2"
+      - "^WEAPGUY3"
+      - "^WEAPGUY4"
+      - "^WEAPGUY5"
+      - "^WEAPGUY6"
+      - "^WEAPGUY7"
+      - "^WEAPGUY_CATCHUP"
+      - "^WEAPGUY_LOOP"
+      - id: "^WEAPGUY_LORE"
+        optional: true
+      - "^WEAPGUY_REWARDS"
+      - "^DM_WEAPONS"
