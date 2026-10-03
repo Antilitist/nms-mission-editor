@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.1.2
+
+- Station guild choices use the in-game names: Mercenaries Guild, Explorers Guild, and Merchants Guild.
+- Station tests pack a synthetic address from made-up voxels.
+- The privacy check reads shipped file contents. The folder the program runs from is not a leak.
+- The license file is the MIT text. The AI helpers credit is in the README.
+- Start.bat says 1.1.2.
+
+## 1.1.1
+
+- The current system is found by packing UniverseAddress: GalacticAddress voxels, plus RealityIndex from UniverseAddress, as the same integer stored on the ^SYSTEM_STATS Address.
+- Meet requirements raises only the race standing and the guild standing the player chooses, plus salvage contracts. The preview names those values.
+- An empty value is filled with IntValue set to the target. A neighbour's numbers are not copied.
+- Meet requirements does not wait for the mission tables to finish loading.
+
+## 1.1.0
+
+- The Station and standing tab shows this system's race standing, guild standing, and salvage contracts against 30, 15, and 5, and the 1,000,000,000 units the station asks for.
+- Meet requirements raises only the counts that are below those targets. It does not lower a higher number and it does not change units. An empty value is filled in the same shape as the stats next to it.
+- Units near the 4,294,967,295 cap show a warning. A negative stored value is that large amount, not a debt.
+- The change uses the existing preview, Write to copy, backup, and Undo. It is refused when the system is not in the save or the game is running.
+
 ## 1.0.6
 
 - A comms title such as "STARSHIP ALERT" is read from the mission Dialog table: Dialog, then GcAlienPuzzleEntry, then Title. The first non-empty Title that the language cache can resolve is shown after the step label. A stage Title is not used. ^PURPM_BOAT has no dialog title, so that step stays "In Stellar Multitudes - step N".

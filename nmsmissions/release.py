@@ -5,9 +5,11 @@ window settings, or extracted game files. The same allowlist can be copied
 to dist/public_repo for a fresh repository. History is not copied.
 
 Generic checks always run: no saves, backups, window settings, absolute
-drive paths, home-folder paths, Steam64 ids, or email addresses. A personal
-word list is not stored here. NMSMISSIONS_BANNED_FILE can point at a local
-uncommitted file. When that file is absent, the personal list is skipped.
+drive paths, home-folder paths, Steam64 ids, or email addresses. Those
+checks read shipped file contents. The folder the program is running from
+is not a leak, including a Windows drive path. A personal word list is not
+stored here. NMSMISSIONS_BANNED_FILE can point at a local uncommitted file.
+When that file is absent, the personal list is skipped.
 """
 
 from __future__ import annotations
@@ -264,6 +266,34 @@ def scan_zip(path: Path) -> list[str]:
 
 def _is_digest(item: str) -> bool:
     return len(item) == 64 and all(char in "0123456789abcdef" for char in item)
+
+
+def scan_shipped_tree(roots: list[Path]) -> list[str]:
+    """Problems in shipped file contents.
+
+    The path of each file is a label only. An installed copy lives on a
+    drive path, and that location is not scanned. A drive path written
+    inside a file still is.
+    """
+    problems: list[str] = []
+    banned = banned_hashes()
+    skip = {".git", ".venv", "__pycache__", "dist", "agent-tools"}
+    skip_suffixes = {".hg", ".pak", ".png", ".jpg", ".zip"}
+    for root in roots:
+        paths = [root] if root.is_file() else list(root.rglob("*"))
+        for path in paths:
+            if not path.is_file():
+                continue
+            if any(part in skip for part in path.parts):
+                continue
+            if path.suffix.lower() in skip_suffixes:
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                continue
+            problems.extend(_scan_hits(text, path.name, banned))
+    return problems
 
 
 def _scan_hits(text: str, label: str, banned: frozenset[str]) -> list[str]:

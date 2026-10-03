@@ -51,6 +51,16 @@ from nmsmissions.rewards import (
     true_to_stored,
 )
 from nmsmissions.spanpatch import Patch, SpanError, append_patch, apply, dumps, locate, replace_patch, unchanged_outside
+from nmsmissions.station import (
+    CHOOSE_STANDING,
+    MISSING_SYSTEM,
+    chosen_stat_ids,
+    label_for,
+    meet_does,
+    raise_changes,
+    read_station,
+    units_warning_lines,
+)
 
 PURPLE_MISSIONS = (
     "^ROBOMISS_0",
@@ -141,6 +151,8 @@ class EditRequest:
     break_after_replace: bool = False
     quiet: bool = False
     running: bool | None = None
+    station_race: str | None = None
+    station_guild: str | None = None
 
 
 @dataclass
@@ -499,6 +511,8 @@ def build_plan(request: EditRequest, snap: Snapshot, tables: GameTables | None) 
         _purple(request, snap, tables, plan, version)
     elif request.action == "unlock":
         _unlock(request, snap, tables, plan, version)
+    elif request.action == "station":
+        _station(request, snap, plan)
     else:
         raise EditError(f"Unknown edit {request.action}.", code=2)
     return plan
@@ -565,6 +579,13 @@ def collect_checks(
         checks.append(Check(level, message))
     else:
         checks.append(Check("ok", "The save unpacks and the manifest is format 2004."))
+    if request.action == "station":
+        if not read_station(snap.player).found:
+            checks.append(Check("fail", MISSING_SYSTEM))
+        elif chosen_stat_ids(request.station_race, request.station_guild) is None:
+            checks.append(Check("fail", CHOOSE_STANDING))
+        else:
+            checks.append(Check("ok", "This system is in the save."))
     active = _active_value(snap)
     if active is not None and active[1] == "Main":
         checks.append(Check("ok", "The active context is Main, so the edit stays on the main save."))
@@ -643,6 +664,13 @@ _DETAIL_NAMES = {
     "eZ<": "KnownProducts",
     "24<": "KnownSpecials",
     "wGS": "Units",
+    "gUR": "Stats",
+    ":rc": "GroupId",
+    "2Ak": "Address",
+    ">MX": "Value",
+    ">vs": "IntValue",
+    "yhJ": "UniverseAddress",
+    "oZw": "GalacticAddress",
     "7QL": "Nanites",
     "kN;": "Quicksilver",
     ";l5": "Inventory",
@@ -785,6 +813,26 @@ def prune_backups(directory: Path, keep: int = 30) -> list[Path]:
         path.unlink()
         removed.append(path)
     return removed
+
+
+def _station(request: EditRequest, snap: Snapshot, plan: Plan) -> None:
+    """Raise the chosen race, the chosen guild, and salvage contracts. Never lowers."""
+    view = read_station(snap.player)
+    plan.warnings.extend(units_warning_lines(view.units))
+    if not view.found:
+        plan.summary = MISSING_SYSTEM
+        return
+    chosen = chosen_stat_ids(request.station_race, request.station_guild)
+    if chosen is None:
+        plan.summary = CHOOSE_STANDING
+        return
+    plan.summary = meet_does(request.station_race, request.station_guild)
+    present = {row.stat_id for row in view.rows}
+    for stat_id in chosen:
+        if stat_id not in present:
+            plan.warnings.append(f"{label_for(stat_id)} is not in this system, so it was not changed.")
+    for label, path, value in raise_changes(view, snap.player_path, chosen):
+        plan.changes.append(Change(label, path, "set", value))
 
 
 def _finish(
@@ -3211,6 +3259,9 @@ class EditorSession:
         chain: str | None,
         flag_only: bool,
         whole_line: bool = False,
+        *,
+        station_race: str | None = None,
+        station_guild: str | None = None,
     ) -> Plan:
         request = EditRequest(
             action="purple" if action == "purple" else action,
@@ -3227,10 +3278,14 @@ class EditorSession:
             game_files=self.game_files,
             pcbanks=self.pcbanks,
             rewards=self.rewards_on,
+            station_race=station_race,
+            station_guild=station_guild,
         )
         with timed("plan-for"):
             snap = self.working_snapshot()
-            tables = self._cached_tables(request)
+            # Station standing does not use mission tables. Joining that loader
+            # here would freeze the window until the read finishes.
+            tables = None if request.action == "station" else self._cached_tables(request)
             plan = build_plan(request, snap, tables)
             plan.checks = collect_checks(request, snap, tables, running=preview_running(), quick=True)
             _note_backup(request, snap, plan)

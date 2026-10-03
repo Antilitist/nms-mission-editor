@@ -1076,7 +1076,13 @@ def launch(
     wiki_button.pack(side="left")
     add_tip(wiki_button, "Open the wiki page for the selected mission.")
 
-    frame = ttk.Frame(window, padding=(8, 0, 8, 8))
+    notebook = ttk.Notebook(window, padding=(8, 0, 8, 8))
+    notebook.pack(fill="both", expand=True)
+    missions_page = ttk.Frame(notebook)
+    station_page = ttk.Frame(notebook, padding=8)
+    notebook.add(missions_page, text="Missions")
+    notebook.add(station_page, text="Station and standing")
+    frame = ttk.Frame(missions_page)
     frame.pack(fill="both", expand=True)
     columns = ("name", "status", "progress")
     tree = ttk.Treeview(frame, columns=columns, selectmode="browse", height=25)
@@ -1221,6 +1227,9 @@ def launch(
             refresh = getattr(window, "_refresh_actions", None)
             if refresh is not None:
                 refresh()
+            refresh_station = getattr(window, "_refresh_station", None)
+            if refresh_station is not None:
+                refresh_station()
 
         window._reload_apply = apply
         worker = threading.Thread(target=work, name="nms-reload", daemon=True)
@@ -1254,7 +1263,10 @@ def launch(
     if session is not None:
         session.wait_snapshot_warm()
         _save_menu(window, session, banner, refresh_status, reload_rows)
-        edit_buttons = _editor_bar(window, tree, session, by_iid, banner, reload_rows, refresh_status)
+        _station_page(window, station_page, session, banner, reload_rows, refresh_status)
+        edit_buttons = _editor_bar(
+            window, tree, session, by_iid, banner, reload_rows, refresh_status, before=notebook
+        )
         need_names = session.game_files is not None and getattr(session, "_names_report", None) is None
         need_tables = bool(session.game_files) and not session.tables_cached()
         if need_names or need_tables:
@@ -1468,6 +1480,8 @@ def launch(
     if session is not None and os.environ.get("NMSMISSIONS_SKIP_SAFETY") != "1":
         if session.game_files is None and getattr(session, "pcbanks", None):
             _soon(300, lambda: begin_game_file_read(window, session, banner, reload_rows, ask=True))
+    if session is None:
+        _station_page(window, station_page, None, banner, None, None)
     entry.focus_set()
     window.mainloop()
 
@@ -1555,12 +1569,94 @@ def quest_line_prompt(action: str, row: dict, rewards: bool) -> tuple[str, str, 
     return ("go", "", "")
 
 
-def _editor_bar(window, tree, session, by_iid: dict, banner, reload_rows, refresh_status) -> list:
+def _station_page(window, page, session, banner, reload_rows, refresh_status) -> None:
+    """Current-system standing. The text comes from the snapshot already in memory."""
+    import tkinter as tk
+    from tkinter import messagebox, ttk
+
+    from nmsmissions.station import CHOOSE_STANDING, GUILD_SPECS, MEET_LABEL, RACE_SPECS, meet_does, panel_text
+
+    body = tk.Label(page, text="", justify="left", anchor="nw")
+    body.pack(fill="x", anchor="nw")
+    _follow_width(window, body)
+
+    race_heading = ttk.Label(page, text="Race standing this station uses. Only this one is raised to 30.")
+    race_heading.pack(fill="x", anchor="w", pady=(8, 0))
+    race_var = tk.StringVar(value="")
+    for stat_id, _label, _target, choice in RACE_SPECS:
+        ttk.Radiobutton(page, text=choice, variable=race_var, value=stat_id).pack(anchor="w")
+
+    guild_heading = ttk.Label(page, text="Guild standing this station uses. Only this one is raised to 15.")
+    guild_heading.pack(fill="x", anchor="w", pady=(8, 0))
+    guild_var = tk.StringVar(value="")
+    for stat_id, _label, _target, choice in GUILD_SPECS:
+        ttk.Radiobutton(page, text=choice, variable=guild_var, value=stat_id).pack(anchor="w")
+
+    salvage_heading = ttk.Label(page, text="Salvage contracts in this system are raised to 5 as well.")
+    salvage_heading.pack(fill="x", anchor="w", pady=(8, 0))
+
+    choice = tk.Label(page, text="", justify="left", anchor="nw")
+    choice.pack(fill="x", anchor="nw", pady=(8, 0))
+    _follow_width(window, choice)
+    actions = ttk.Frame(page)
+    actions.pack(fill="x", pady=(8, 0))
+
+    def refresh(*_args: object) -> None:
+        if session is None:
+            body.configure(text=panel_text(None, opened=False))
+            return
+        snap = session.peek_snapshot()
+        if snap is None:
+            body.configure(text=panel_text(None, loading=True))
+            return
+        body.configure(text=panel_text(snap.player))
+
+    def refresh_choice(*_args: object) -> None:
+        text = meet_does(race_var.get() or None, guild_var.get() or None)
+        choice.configure(text=text)
+        set_tip(tip, text)
+
+    def meet() -> None:
+        if session is None:
+            messagebox.showinfo("Station and standing", "Open a save first.")
+            return
+        race_id = race_var.get()
+        guild_id = guild_var.get()
+        if not race_id or not guild_id:
+            messagebox.showinfo("Station and standing", CHOOSE_STANDING)
+            return
+        try:
+            plan = session.plan_for(
+                "station",
+                None,
+                None,
+                False,
+                station_race=race_id,
+                station_guild=guild_id,
+            )
+        except Exception as exc:
+            messagebox.showerror("Could not preview", str(exc))
+            return
+        _preview(window, session, plan, banner, reload_rows, refresh_status)
+
+    button = ttk.Button(actions, text=MEET_LABEL, command=meet)
+    button.pack(side="left")
+    tip = add_tip(button, meet_does(None, None))
+    race_var.trace_add("write", refresh_choice)
+    guild_var.trace_add("write", refresh_choice)
+    refresh_choice()
+    if session is None:
+        button.state(["disabled"])
+    window._refresh_station = refresh
+    refresh()
+
+
+def _editor_bar(window, tree, session, by_iid: dict, banner, reload_rows, refresh_status, before=None) -> list:
     import tkinter as tk
     from tkinter import messagebox, ttk
 
     bar = ttk.Frame(window, padding=(8, 0, 8, 4))
-    bar.pack(fill="x", before=tree.master)
+    bar.pack(fill="x", before=before if before is not None else tree.master)
     give = tk.BooleanVar(value=True)
     rewards_box = ttk.Checkbutton(bar, text="Give items and money", variable=give)
     rewards_box.pack(side="left")

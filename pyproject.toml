@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nmsmissions"
-version = "1.0.6"
+version = "1.1.2"
 description = "No Man's Sky mission chain viewer and copy editor"
 readme = "README.md"
 requires-python = ">=3.10"

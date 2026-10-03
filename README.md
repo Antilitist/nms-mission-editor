@@ -1,6 +1,6 @@
 # NMS Mission Editor
 
-Version 1.0.6.
+Version 1.1.2.
 
 Edit No Man's Sky mission progress on a **copy** of your save.
 Then put that copy back into the game when you are ready.
@@ -31,6 +31,28 @@ If that build is not 25625620, the warning says so.
 - For In Stellar Multitudes, that unlock turns on purple stars.
 - Does not raise ship or frigate counts.
 - Does not install technology into a slot.
+
+## Station and standing
+
+The Station and standing tab shows the current system's own numbers.
+Standing in another system does not count.
+
+- Local race standing, against 30. Korvax, Gek, and Vy'keen each have their own stat.
+- Local guild standing, against 15. Mercenaries Guild, Explorers Guild, or Merchants Guild.
+- Salvage contracts in this system, against 5.
+- The station also asks for 1,000,000,000 units.
+
+Choose the race this station uses and the guild this station uses.
+Meet requirements raises that race standing, that guild standing, and salvage contracts, and only when a number is below its target.
+The other standings stay as they are.
+It never lowers a number, and it does not change units.
+If a count has an empty value, it is filled with IntValue set to the target.
+
+Units near the cap show a warning.
+Units are stored as a signed number, so a negative value is a large amount, about 4.29 billion at the cap, not a debt.
+
+The change uses the same preview, Write to copy, backup, and Undo as the other edits.
+It is refused when this system is not in the save, or when the game is running.
 
 ## Install
 

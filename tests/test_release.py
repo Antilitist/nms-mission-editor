@@ -58,9 +58,17 @@ class ReleaseTests(TkCleanup, unittest.TestCase):
     def test_version_file_matches_the_package(self) -> None:
         root = Path(__file__).resolve().parents[1]
         self.assertEqual((root / "VERSION").read_text(encoding="utf-8").strip(), __version__)
-        self.assertEqual(__version__, "1.0.6")
+        self.assertEqual(__version__, "1.1.2")
         text = (root / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.6"', text)
+        self.assertIn('version = "1.1.2"', text)
+        license_text = (root / "LICENSE").read_text(encoding="utf-8")
+        self.assertTrue(license_text.startswith("MIT License\n"))
+        self.assertNotIn("AI helpers", license_text)
+        readme = (root / "README.md").read_text(encoding="utf-8")
+        self.assertIn(AI_CREDIT, readme)
+        bat = (root / "Start.bat").read_text(encoding="utf-8")
+        self.assertIn("REM NMS Mission Editor 1.1.2", bat)
+        self.assertNotIn("1.0.6", bat)
 
     def test_zip_allowlist_has_no_personal_data(self) -> None:
         self._need_release()
@@ -288,7 +296,7 @@ class ReleaseTests(TkCleanup, unittest.TestCase):
                 with patch("tkinter.messagebox.showinfo") as info:
                     about.invoke()
                 text = info.call_args.args[1]
-                self.assertIn("1.0.6", text)
+                self.assertIn("1.1.2", text)
                 self.assertIn("X Money: Antilitist", text)
                 self.assertIn("Cash App", text)
                 self.assertIn(CREDIT, text)
@@ -339,7 +347,7 @@ class OfflineMappingTests(unittest.TestCase):
 
 class PrivacyTests(unittest.TestCase):
     def test_current_files_use_generic_examples(self) -> None:
-        from nmsmissions.release import scan_text
+        from nmsmissions.release import scan_shipped_tree
 
         editor = Path(__file__).resolve().parents[1]
         roots = [editor]
@@ -352,29 +360,30 @@ class PrivacyTests(unittest.TestCase):
                 extra = parent / name
                 if extra.exists():
                     roots.append(extra)
-        problems: list[str] = []
-        skip = {".git", ".venv", "__pycache__", "dist", "agent-tools"}
         previous = os.environ.pop("NMSMISSIONS_BANNED_FILE", None)
         try:
-            for root in roots:
-                paths = [root] if root.is_file() else list(root.rglob("*"))
-                for path in paths:
-                    if not path.is_file():
-                        continue
-                    if any(part in skip for part in path.parts):
-                        continue
-                    if path.suffix.lower() in {".hg", ".pak", ".png", ".jpg", ".zip"}:
-                        continue
-                    try:
-                        text = path.read_text(encoding="utf-8")
-                    except (OSError, UnicodeError):
-                        continue
-                    if scan_text(text) or scan_text(str(path)):
-                        problems.append(str(path))
+            problems = scan_shipped_tree(roots)
         finally:
             if previous is not None:
                 os.environ["NMSMISSIONS_BANNED_FILE"] = previous
         self.assertEqual(problems, [])
+
+    def test_an_install_path_is_not_a_leak(self) -> None:
+        from nmsmissions.release import _scan_hits, scan_shipped_tree
+
+        install = "C:" + "\\" + "Games" + "\\" + "editor" + "\\" + "README.md"
+        self.assertEqual(_scan_hits("plain words", install, frozenset()), [])
+        leaked = "D:" + "\\" + "copies" + "\\" + "save2.hg"
+        self.assertTrue(any("absolute drive path" in item for item in _scan_hits(leaked, "note.txt", frozenset())))
+        with TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            note = folder / "note.txt"
+            note.write_text("plain words\n", encoding="utf-8")
+            self.assertEqual(scan_shipped_tree([folder]), [])
+            note.write_text(leaked + "\n", encoding="utf-8")
+            found = "\n".join(scan_shipped_tree([folder]))
+            self.assertIn("absolute drive path", found)
+            self.assertNotIn(leaked, found)
 
 
 if __name__ == "__main__":
