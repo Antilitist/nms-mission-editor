@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-__version__ = "1.1.2"
+__version__ = "1.2.2"
 
 CREDIT = "Sam (Coder), Avea (Art) & Antilitist (Tester, Coder, Modder)"
 AI_CREDIT = "Atlas & Nyx (AI helpers)"

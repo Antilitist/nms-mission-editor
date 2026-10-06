@@ -334,6 +334,7 @@ class StationWindowTests(TkCleanup, unittest.TestCase):
             UNLOCK_LABEL,
             launch,
         )
+        from nmsmissions.corvette import FILL_LABEL
         from nmsmissions.station import MEET_LABEL
         from tests.test_slots import _one, _walk
 
@@ -370,11 +371,12 @@ class StationWindowTests(TkCleanup, unittest.TestCase):
                     "Clear cache",
                     "About / Tip me",
                     MEET_LABEL,
+                    FILL_LABEL,
                 ):
                     self.assertIn(label, buttons)
                 book = next(widget for widget in widgets if isinstance(widget, ttk.Notebook))
                 names = [book.tab(tab, "text") for tab in book.tabs()]
-                self.assertEqual(names, ["Missions", "Station and standing"])
+                self.assertEqual(names, ["Missions", "Station and standing", "Corvette parts"])
                 shown = "\n".join(str(widget.cget("text")) for widget in widgets if isinstance(widget, (tk.Label, ttk.Label)))
                 self.assertIn("Local race standing: 30", shown)
                 self.assertIn("Korvax standing in this system: 0 / 30", shown)

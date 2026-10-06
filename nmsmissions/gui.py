@@ -1080,8 +1080,10 @@ def launch(
     notebook.pack(fill="both", expand=True)
     missions_page = ttk.Frame(notebook)
     station_page = ttk.Frame(notebook, padding=8)
+    corvette_page = ttk.Frame(notebook, padding=8)
     notebook.add(missions_page, text="Missions")
     notebook.add(station_page, text="Station and standing")
+    notebook.add(corvette_page, text="Corvette parts")
     frame = ttk.Frame(missions_page)
     frame.pack(fill="both", expand=True)
     columns = ("name", "status", "progress")
@@ -1230,6 +1232,9 @@ def launch(
             refresh_station = getattr(window, "_refresh_station", None)
             if refresh_station is not None:
                 refresh_station()
+            refresh_corvette = getattr(window, "_refresh_corvette", None)
+            if refresh_corvette is not None:
+                refresh_corvette()
 
         window._reload_apply = apply
         worker = threading.Thread(target=work, name="nms-reload", daemon=True)
@@ -1264,6 +1269,7 @@ def launch(
         session.wait_snapshot_warm()
         _save_menu(window, session, banner, refresh_status, reload_rows)
         _station_page(window, station_page, session, banner, reload_rows, refresh_status)
+        _corvette_page(window, corvette_page, session, banner, reload_rows, refresh_status)
         edit_buttons = _editor_bar(
             window, tree, session, by_iid, banner, reload_rows, refresh_status, before=notebook
         )
@@ -1349,6 +1355,9 @@ def launch(
                             button.state(["!disabled"])
                         for refresh in getattr(edit_buttons, "refreshers", ()):
                             refresh()
+                        refresh_corvette = getattr(window, "_refresh_corvette", None)
+                        if refresh_corvette is not None:
+                            refresh_corvette()
                     if asset_rows is None:
                         waiting = _loading_line()
                         mode_line = getattr(banner, "mode_line", "")
@@ -1482,6 +1491,7 @@ def launch(
             _soon(300, lambda: begin_game_file_read(window, session, banner, reload_rows, ask=True))
     if session is None:
         _station_page(window, station_page, None, banner, None, None)
+        _corvette_page(window, corvette_page, None, banner, None, None)
     entry.focus_set()
     window.mainloop()
 
@@ -1648,6 +1658,106 @@ def _station_page(window, page, session, banner, reload_rows, refresh_status) ->
     if session is None:
         button.state(["disabled"])
     window._refresh_station = refresh
+    refresh()
+
+
+def _corvette_page(window, page, session, banner, reload_rows, refresh_status) -> None:
+    """Workshop cache fill. The part list is the cached read of the player's files."""
+    import tkinter as tk
+    from tkinter import messagebox, ttk
+
+    from nmsmissions.corvette import (
+        FILL_LABEL,
+        NEED_FILES,
+        REREAD,
+        panel_text,
+        parse_stack_size,
+        parts_from_tables,
+        stack_cap_from_tables,
+    )
+
+    body = tk.Label(page, text="", justify="left", anchor="nw")
+    body.pack(fill="x", anchor="nw")
+    _follow_width(window, body)
+    actions = ttk.Frame(page)
+    actions.pack(fill="x", pady=(8, 0))
+    ttk.Label(actions, text="Stack size").pack(side="left")
+    stack_var = tk.StringVar(value="")
+    spin = ttk.Spinbox(actions, from_=1, to=1, textvariable=stack_var, width=6)
+    spin.pack(side="left", padx=(8, 0))
+    cap_label = ttk.Label(actions, text="")
+    cap_label.pack(side="left", padx=(8, 0))
+    ready = {"cap": 0, "filled": False, "reread": False}
+
+    def refresh(*_args: object) -> None:
+        if session is None:
+            body.configure(text=panel_text(None, None, 0))
+            return
+        snap = session.peek_snapshot()
+        if snap is None:
+            body.configure(text=panel_text(None, [], 0, loading=True))
+            return
+        if session.game_files is None:
+            body.configure(text=panel_text(snap.player, None, 0))
+            cap_label.configure(text="")
+            return
+        if not session.tables_cached():
+            body.configure(text=panel_text(snap.player, [], 0, loading=True))
+            return
+        tables = session.cached_tables()
+        parts = parts_from_tables(tables) if tables is not None else []
+        cap = stack_cap_from_tables(tables) if tables is not None else 0
+        reread = bool(getattr(tables, "corvette_needs_reread", False)) if tables is not None else False
+        ready["cap"] = cap
+        ready["reread"] = reread
+        body.configure(text=panel_text(snap.player, parts, cap, reread=reread))
+        if cap:
+            spin.configure(to=cap)
+            cap_label.configure(text=f"up to {cap}")
+            if not ready["filled"]:
+                stack_var.set(str(cap))
+                ready["filled"] = True
+        else:
+            cap_label.configure(text="")
+
+    def fill() -> None:
+        if session is None:
+            messagebox.showinfo("Corvette parts", "Open a save first.")
+            return
+        if session.game_files is None:
+            messagebox.showinfo("Corvette parts", NEED_FILES)
+            return
+        if session.game_files and not session.tables_cached():
+            if session._table_error is not None:
+                messagebox.showerror("Corvette parts", f"The part list failed to load.\n{session._table_error}")
+                return
+            messagebox.showinfo("Corvette parts", "The part list is still loading.")
+            return
+        if ready["reread"]:
+            messagebox.showinfo("Corvette parts", REREAD)
+            return
+        cap = ready["cap"]
+        amount = parse_stack_size(stack_var.get(), cap)
+        if amount is None:
+            limit = str(cap) if cap else "the game tables"
+            messagebox.showinfo("Corvette parts", f"Enter a stack size from 1 to {limit}.")
+            return
+        try:
+            plan = session.plan_for("corvette", None, None, False, stack_size=amount)
+        except Exception as exc:
+            messagebox.showerror("Could not preview", str(exc))
+            return
+        _preview(window, session, plan, banner, reload_rows, refresh_status)
+
+    button = ttk.Button(actions, text=FILL_LABEL, command=fill)
+    button.pack(side="left", padx=(12, 0))
+    add_tip(
+        button,
+        "Add one stack of every buildable corvette part that is not already in the workshop cache.",
+    )
+    if session is None:
+        button.state(["disabled"])
+    window._refresh_corvette = refresh
     refresh()
 
 
@@ -2161,6 +2271,22 @@ def begin_game_file_read(window, session, banner, reload_rows, ask: bool = False
             session.start_table_load()
             _keep_banner(banner, "Game files read. Loading names…", "#0b6e4f")
             window.after(100, finish_names)
+
+            def watch_tables() -> None:
+                try:
+                    alive = window.winfo_exists()
+                except tk.TclError:
+                    alive = False
+                if not alive:
+                    return
+                refresh_corvette = getattr(window, "_refresh_corvette", None)
+                if refresh_corvette is not None:
+                    refresh_corvette()
+                if session.tables_cached() or session._table_error is not None:
+                    return
+                window.after(200, watch_tables)
+
+            window.after(200, watch_tables)
             return
         window.after(100, poll)
 

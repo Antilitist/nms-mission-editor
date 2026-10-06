@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.2.2
+
+- A part with no category is included only when the build menu marks it as ship structure. The ship decoration flag also marks ordinary base items, and those stay out.
+- On the 7.05 tables the catalog is 160 parts, including the internal landing bay. Each of those parts uses the corvette stack cap.
+- Read my game files asks for the base-building objects table. That install has no separate building table.
+- A part list saved by 1.2.1 is rebuilt from the files already on disk.
+
+## 1.2.1
+
+- Corvette parts are read from the corvette part table in the player's install, not the general product table.
+- The stack limit is the Normal BaseCapsule product stack times the part's stack multiplier. On the 7.05 tables that is 100 times 5, so 500. The chest column is not used.
+- The internal landing bay is included. It has no part category, and it is a ship part in the build menu.
+- Read my game files copies those tables and does not unpack base-building models.
+- A game-file copy from an older version is missing the corvette part table. The Corvette page says to click Read my game files again.
+
+## 1.2.0
+
+- The Corvette parts tab fills the Corvette Workshop Cache with one stack of each buildable corvette part that is not already there.
+- The part list and the stack limit are read from the player's own game files. Hidden parts, unnamed parts, general base decor, and farming plants are left out.
+- The stack size can be anything up to the chest limit in those tables. The preview shows how many parts will be added and how many slots are free, and it names the parts that do not fit.
+- Parts already in the cache are left as they are. The write is refused when the game is running, or when the cache no longer matches the preview. Other backups are kept.
+
 ## 1.1.2
 
 - Station guild choices use the in-game names: Mercenaries Guild, Explorers Guild, and Merchants Guild.

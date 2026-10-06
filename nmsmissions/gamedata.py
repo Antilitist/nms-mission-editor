@@ -62,6 +62,9 @@ class GameTables:
     warning: str = ""
     from_cache: bool = False
     files_match: bool = False
+    corvette_parts: list = field(default_factory=list)
+    corvette_stack_cap: int = 0
+    corvette_needs_reread: bool = False
 
     def highest_version(self) -> int:
         versions = [version for info in self.missions.values() for version, _progress in info.finals]
@@ -118,7 +121,7 @@ def finals_for_catalog(tables: GameTables, save_version: int | None) -> dict[str
 
 # Bump when the cached JSON shape changes. The parser hash is stored and not
 # compared, so a faster parser still reads a cache written by 0.5.0.
-TABLES_CACHE_VERSION = 1
+TABLES_CACHE_VERSION = 4
 _TABLE_SUFFIXES = {".mxml", ".exml", ".xml"}
 # A cold extract is a few dozen large files, not 64 small ones. The pool
 # starts when the XML to parse is at least this many bytes, or one file is
@@ -250,6 +253,9 @@ def _load_tables_body(
             return cached
     chosen = _files_to_parse(files, progress)
     tables = _parse_chosen(chosen, progress)
+    from nmsmissions.corvette import attach_catalog
+
+    attach_catalog(tables, root)
     newest_table = max((row["mtime_ns"] for row in fingerprint), default=0)
     tables.max_version = tables.highest_version()
     tables.files_match = False
@@ -647,6 +653,9 @@ def _tables_to_json(tables: GameTables) -> dict:
         "stale": tables.stale,
         "warning": tables.warning,
         "files_match": tables.files_match,
+        "corvette_parts": list(tables.corvette_parts),
+        "corvette_stack_cap": tables.corvette_stack_cap,
+        "corvette_needs_reread": tables.corvette_needs_reread,
     }
 
 
@@ -685,6 +694,9 @@ def _tables_from_json(payload: dict) -> GameTables:
         stale=bool(payload.get("stale")),
         warning=str(payload.get("warning") or ""),
         files_match=bool(payload.get("files_match")),
+        corvette_parts=list(payload.get("corvette_parts") or []),
+        corvette_stack_cap=int(payload.get("corvette_stack_cap") or 0),
+        corvette_needs_reread=bool(payload.get("corvette_needs_reread")),
     )
 
 

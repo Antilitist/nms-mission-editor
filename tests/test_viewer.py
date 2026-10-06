@@ -1487,8 +1487,8 @@ class GameNameTests(unittest.TestCase):
             from nmsmissions import __version__
 
             cached = json.loads(cache.read_text(encoding="utf-8"))
-            self.assertEqual(__version__, "1.1.2")
-            self.assertEqual(cached["tool"], "1.1.2")
+            self.assertEqual(__version__, "1.2.2")
+            self.assertEqual(cached["tool"], "1.2.2")
             self.assertEqual(cached["version"], CACHE_VERSION)
             cached["source"] = "0" * 16
             cached["tool"] = "0.0.0"

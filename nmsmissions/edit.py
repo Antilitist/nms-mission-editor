@@ -51,6 +51,14 @@ from nmsmissions.rewards import (
     true_to_stored,
 )
 from nmsmissions.spanpatch import Patch, SpanError, append_patch, apply, dumps, locate, replace_patch, unchanged_outside
+from nmsmissions.corvette import (
+    REREAD,
+    cache_counts,
+    parse_stack_size,
+    parts_from_tables,
+    plan_fill,
+    stack_cap_from_tables,
+)
 from nmsmissions.station import (
     CHOOSE_STANDING,
     MISSING_SYSTEM,
@@ -117,6 +125,8 @@ class Plan:
     checks: list[Check] = field(default_factory=list)
     mission_version: int | None = None
     backup_path: str = ""
+    expected_add: int | None = None
+    expected_occupied: int | None = None
 
     def failing(self) -> bool:
         return any(check.level == "fail" for check in self.checks)
@@ -153,6 +163,8 @@ class EditRequest:
     running: bool | None = None
     station_race: str | None = None
     station_guild: str | None = None
+    stack_size: int = 1
+    preserve_backups: bool = False
 
 
 @dataclass
@@ -513,6 +525,8 @@ def build_plan(request: EditRequest, snap: Snapshot, tables: GameTables | None) 
         _unlock(request, snap, tables, plan, version)
     elif request.action == "station":
         _station(request, snap, plan)
+    elif request.action == "corvette":
+        _corvette(request, snap, tables, plan)
     else:
         raise EditError(f"Unknown edit {request.action}.", code=2)
     return plan
@@ -688,6 +702,8 @@ _DETAIL_NAMES = {
     "XJ>": "Y",
     "Vn8": "Type",
     "elv": "InventoryType",
+    "wem": "CorvetteStorageInventory",
+    "9i?": "CorvetteStorageLayout",
 }
 
 
@@ -719,6 +735,7 @@ def commit(
     if game_is_running(running):
         raise EditError("No Man's Sky is running. Close it before writing a save.", code=2)
     patched, patches = _patched_text(snap.text, plan.changes)
+    _corvette_guard(snap, plan, patched)
     _self_check(snap, patched, patches, plan.changes)
     raw = patched.encode("utf-8", errors="surrogateescape") + snap.suffix
     if unpack_save(pack_chunks(raw)).raw != raw:
@@ -755,7 +772,10 @@ def commit(
     if request.break_after_replace or not _written_ok(snap, packed, encrypted, raw):
         _restore_zip(backup, snap.path.parent)
         return 4, backup
-    prune_backups(directory)
+    # The workshop fill keeps every other backup. The usual cleanup drops
+    # older zips once a folder holds more than the newest set.
+    if not request.preserve_backups:
+        prune_backups(directory)
     return 0, backup
 
 
@@ -813,6 +833,55 @@ def prune_backups(directory: Path, keep: int = 30) -> list[Path]:
         path.unlink()
         removed.append(path)
     return removed
+
+
+def _corvette_guard(snap: Snapshot, plan: Plan, patched: str) -> None:
+    """The workshop item count must still be the one the preview showed."""
+    if plan.expected_add is None:
+        return
+    current = cache_counts(snap.player)
+    if current is None or current[0] != plan.expected_occupied:
+        raise EditError("The workshop cache changed after the preview. Reload and preview again.", code=2)
+    adds = sum(1 for change in plan.changes if change.op == "append")
+    if adds != plan.expected_add:
+        raise EditError("The workshop cache changed after the preview. Reload and preview again.", code=2)
+    parsed = loads_save(patched)
+    try:
+        _path, player = find_player(parsed)
+    except EditError as exc:
+        raise EditError("The workshop cache item count does not match the preview, so nothing was written.", code=2) from exc
+    updated = cache_counts(player)
+    if updated is None or updated[0] != plan.expected_occupied + plan.expected_add:
+        raise EditError("The workshop cache item count does not match the preview, so nothing was written.", code=2)
+
+
+def _corvette(request: EditRequest, snap: Snapshot, tables: GameTables | None, plan: Plan) -> None:
+    """Add one stack of each missing buildable part. Existing stacks stay."""
+    request.preserve_backups = True
+    if tables is None:
+        plan.summary = "Click Read my game files first. The part list comes from your own install."
+        return
+    if getattr(tables, "corvette_needs_reread", False):
+        plan.summary = REREAD
+        return
+    parts = parts_from_tables(tables)
+    cap = stack_cap_from_tables(tables)
+    if not parts:
+        plan.summary = "No buildable corvette parts were found in the game files, so nothing was added."
+        return
+    amount = parse_stack_size(str(request.stack_size), cap)
+    if amount is None:
+        limit = str(cap) if cap else "the game tables"
+        plan.summary = f"Enter a stack size from 1 to {limit}."
+        return
+    filled = plan_fill(snap.player, snap.player_path, parts, cap, amount)
+    plan.summary = filled["summary"]
+    plan.skipped.extend(filled["skipped"])
+    plan.warnings.extend(filled["warnings"])
+    plan.expected_add = filled["add_count"]
+    plan.expected_occupied = filled["occupied"]
+    for label, path, slot in filled["changes"]:
+        plan.changes.append(Change(label, path, "append", slot))
 
 
 def _station(request: EditRequest, snap: Snapshot, plan: Plan) -> None:
@@ -3262,6 +3331,7 @@ class EditorSession:
         *,
         station_race: str | None = None,
         station_guild: str | None = None,
+        stack_size: int = 1,
     ) -> Plan:
         request = EditRequest(
             action="purple" if action == "purple" else action,
@@ -3280,12 +3350,21 @@ class EditorSession:
             rewards=self.rewards_on,
             station_race=station_race,
             station_guild=station_guild,
+            stack_size=stack_size,
         )
         with timed("plan-for"):
             snap = self.working_snapshot()
             # Station standing does not use mission tables. Joining that loader
             # here would freeze the window until the read finishes.
-            tables = None if request.action == "station" else self._cached_tables(request)
+            # Station standing and a corvette preview both refuse to join the
+            # mission-table loader. The corvette page only calls this once the
+            # part list is already cached.
+            if request.action == "station":
+                tables = None
+            elif request.action == "corvette" and not self.tables_cached():
+                tables = None
+            else:
+                tables = self._cached_tables(request)
             plan = build_plan(request, snap, tables)
             plan.checks = collect_checks(request, snap, tables, running=preview_running(), quick=True)
             _note_backup(request, snap, plan)

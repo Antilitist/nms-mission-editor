@@ -1,6 +1,6 @@
 # NMS Mission Editor
 
-Version 1.1.2.
+Version 1.2.2.
 
 Edit No Man's Sky mission progress on a **copy** of your save.
 Then put that copy back into the game when you are ready.
@@ -54,6 +54,38 @@ Units are stored as a signed number, so a negative value is a large amount, abou
 The change uses the same preview, Write to copy, backup, and Undo as the other edits.
 It is refused when this system is not in the save, or when the game is running.
 
+## Corvette parts
+
+The Corvette parts tab fills the Corvette Workshop Cache.
+That is the storage the corvette workshop uses.
+
+Click **Read my game files** first.
+The part list comes from the corvette part table in your own install, together with the base-building objects table that says which parts the build menu can place.
+It includes the parts the build menu can place: hulls, cockpits, habs, walkways, landing bays, reactors, engines, wings, landing gear, shields, turrets, connectors, trims, decor, windows, and interior parts such as a cargo rack, bunk, kitchen, toilet, medi-pod, refiner, mission radar, living wall, or stairs.
+The internal landing bay is included. It has no part category, and the build menu marks it as ship structure.
+A chair, wall light, or ruin with only the ship decoration flag stays out.
+
+Parts hidden from the build menu are left out.
+So are parts with no English name, general base decor, and farming plants.
+
+The page shows how many parts are already in the cache and how many slots are free.
+Set the stack size.
+The largest stack is the workshop storage limit in your game tables: the Normal BaseCapsule product stack times that part's stack multiplier.
+On the 7.05 tables the capsule stack is 100 and these parts use a multiplier of 5, so a full stack is 500.
+
+If the page says the corvette part table is missing, click **Read my game files** again.
+A part list saved by 1.2.1 is rebuilt from the files already on this PC.
+
+**Fill Corvette Workshop Cache with all parts** shows a preview first.
+It says how many parts will be added and how many slots are free.
+Parts already in the cache stay as they are, including their current stack.
+If there are more parts than free slots, the preview fills what fits and names the rest.
+
+The write makes a backup first and uses the same save write as the other edits.
+It is refused when No Man's Sky is running.
+It is also refused when the cache changed after the preview.
+This fill does not delete older backups.
+
 ## Install
 
 You need **Python 3.10 or newer**, 64-bit, from [python.org](https://www.python.org/downloads/).
@@ -90,7 +122,8 @@ Edits stay in that copy until you put them into the game.
 The first time the tool finds your game, it asks to read your files.
 You can also click **Read my game files** later.
 
-That step copies the mission tables, the English language files, and the reward, product, tech, and substance tables out of your PCBANKS folder into a cache on this PC.
+That step copies the mission tables, the English language files, and the reward, product, tech, substance, difficulty, and corvette part tables, plus the base-building objects table, out of your PCBANKS folder into a cache on this PC.
+It does not copy base-building models.
 It does not change the game.
 A new read replaces the previous one.
 Raw game files and the extra US-English copies are not kept.
@@ -173,7 +206,7 @@ After a game update:
 - The startup box names the new build when it can read it.
 - A different build can change mission data. Read the warning before you write.
 - Finish values and mission names come from your install, not from this zip.
-- If names look wrong after a game update, click **Read my game files** again.
+- If names look wrong after a game update, or the Corvette page says the part table is missing, click **Read my game files** again.
 - This zip never includes those extracted files.
 
 ## FAQ

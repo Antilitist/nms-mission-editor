@@ -1,9 +1,10 @@
 """Read mission, language, and reward tables from the player's own PCBANKS.
 
 The read keeps mission text, every NMS_*_ENGLISH language file, and the
-reward, product, substance, and technology tables. Raw MBIN files and the
-duplicate US-English files are deleted after conversion. A new read replaces
-the previous one.
+reward, product, substance, technology, and difficulty tables, plus the
+corvette part table and the base-building objects table. It does not unpack
+base-building models. Raw MBIN files and the duplicate US-English files are
+deleted after conversion. A new read replaces the previous one.
 
 HGPAKtool (monkeyman192, https://github.com/monkeyman192/HGPAKtool) is MIT.
 Start.bat installs it with the other packages on first run. This folder does
@@ -35,6 +36,12 @@ REWARD_FILTER = "*rewardtable*"
 PRODUCT_FILTER = "*producttable*"
 SUBSTANCE_FILTER = "*substancetable*"
 TECH_FILTER = "*technologytable*"
+# These are the table files, not every path that contains "basebuilding".
+# A broad *basebuilding* filter also unpacks large part models.
+PARTS_FILTER = "*nms_basepartproducts*"
+# 7.05 has no BASEBUILDINGTABLE. The objects table holds the build-menu entries.
+OBJECTS_FILTER = "*[\\\\/]basebuildingobjectstable.mbin*"
+DIFFICULTY_FILTER = "*difficultyconfig*"
 FILTERS = (
     MISSION_FILTER,
     LANGUAGE_FILTER,
@@ -42,6 +49,9 @@ FILTERS = (
     PRODUCT_FILTER,
     SUBSTANCE_FILTER,
     TECH_FILTER,
+    PARTS_FILTER,
+    OBJECTS_FILTER,
+    DIFFICULTY_FILTER,
 )
 
 COMPILER_VERSION = "v7.04.1-pre3"
@@ -55,7 +65,18 @@ COMPILER_SHA256 = {
     "MBINCompiler-linux": "f65d5bbd36cc841ec82ee50cec13c99e0f0f6ac433b9135f92e2ad4582d0288d",
     "libMBIN-linux.so": "02156b615bf2ef68d1d2b28948381875a6ddb4368c6d9aa747729ff545e507fa",
 }
-_KEEP_TABLES = ("rewardtable", "producttable", "substancetable", "technologytable")
+_KEEP_TABLES = (
+    "rewardtable",
+    "producttable",
+    "substancetable",
+    "technologytable",
+    "difficultyconfig",
+)
+# Exact file stems. "basebuilding" as a substring also matches model files.
+_KEEP_EXACT = (
+    "nms_basepartproducts",
+    "basebuildingobjectstable",
+)
 _CHILD_SCRIPT = r"""
 import os
 import sys
@@ -344,8 +365,24 @@ def _keep_extracted(path: Path) -> bool:
         return True
     if "/language/" in folded and name.startswith("nms_") and "english" in name:
         return True
+    if _extracted_stem(path) in _KEEP_EXACT:
+        return True
     stem = path.stem.lower()
     return any(token in stem for token in _KEEP_TABLES)
+
+
+def _extracted_stem(path: Path) -> str:
+    """File name without the conversion suffixes. legacybasebuildingtable stays distinct."""
+    name = path.name.lower()
+    for suffix in (".exml", ".mxml", ".xml"):
+        if name.endswith(suffix):
+            name = name[: -len(suffix)]
+            break
+    for suffix in (".mbin.pc", ".mbin"):
+        if name.endswith(suffix):
+            name = name[: -len(suffix)]
+            break
+    return name
 
 
 def _say(progress, message: str) -> None:

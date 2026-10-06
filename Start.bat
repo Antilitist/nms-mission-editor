@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 title NMS Mission Editor
 
-REM NMS Mission Editor 1.1.2
+REM NMS Mission Editor 1.2.2
 REM Python 3.10 or newer, with Tcl/Tk. https://www.python.org/downloads/
 REM Tick "Add python.exe to PATH" in the installer.
 

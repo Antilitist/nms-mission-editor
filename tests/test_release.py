@@ -58,16 +58,16 @@ class ReleaseTests(TkCleanup, unittest.TestCase):
     def test_version_file_matches_the_package(self) -> None:
         root = Path(__file__).resolve().parents[1]
         self.assertEqual((root / "VERSION").read_text(encoding="utf-8").strip(), __version__)
-        self.assertEqual(__version__, "1.1.2")
+        self.assertEqual(__version__, "1.2.2")
         text = (root / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertIn('version = "1.1.2"', text)
+        self.assertIn('version = "1.2.2"', text)
         license_text = (root / "LICENSE").read_text(encoding="utf-8")
         self.assertTrue(license_text.startswith("MIT License\n"))
         self.assertNotIn("AI helpers", license_text)
         readme = (root / "README.md").read_text(encoding="utf-8")
         self.assertIn(AI_CREDIT, readme)
         bat = (root / "Start.bat").read_text(encoding="utf-8")
-        self.assertIn("REM NMS Mission Editor 1.1.2", bat)
+        self.assertIn("REM NMS Mission Editor 1.2.2", bat)
         self.assertNotIn("1.0.6", bat)
 
     def test_zip_allowlist_has_no_personal_data(self) -> None:
@@ -296,7 +296,7 @@ class ReleaseTests(TkCleanup, unittest.TestCase):
                 with patch("tkinter.messagebox.showinfo") as info:
                     about.invoke()
                 text = info.call_args.args[1]
-                self.assertIn("1.1.2", text)
+                self.assertIn("1.2.2", text)
                 self.assertIn("X Money: Antilitist", text)
                 self.assertIn("Cash App", text)
                 self.assertIn(CREDIT, text)
