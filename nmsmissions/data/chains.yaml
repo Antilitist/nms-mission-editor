@@ -196,6 +196,26 @@ chains:
       - id: "^HAUL_TUT_INTRO"
         optional: true
       - "^HAUL_TUT"
+  - id: courier
+    title: Space Courier
+    wiki: https://nomanssky.fandom.com/wiki/Space_Courier
+    wiki_confirmed: false
+    group: side
+    requires: []
+    note: "Repeating planet delivery from a deep-space outpost. Needs a corvette and a Gravitino Coil."
+    steps:
+      - id: "^SO_POSTIE_PL_SR"
+        title: Space Courier
+  - id: haulage
+    title: Corvette Haulage
+    wiki: https://nomanssky.fandom.com/wiki/Corvette_Haulage
+    wiki_confirmed: false
+    group: side
+    requires: []
+    note: "Repeating station delivery. Needs a corvette and a Gravitino Coil. Multi-parcel jobs use this same log."
+    steps:
+      - id: "^SO_POSTIE_ST_SR"
+        title: Corvette Haulage
   - id: base_archives
     title: Base Computer Archives
     wiki: https://nomanssky.fandom.com/wiki/Base_Computer_Archives

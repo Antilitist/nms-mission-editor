@@ -54,16 +54,17 @@ FILTERS = (
     DIFFICULTY_FILTER,
 )
 
-COMPILER_VERSION = "v7.04.1-pre3"
+COMPILER_VERSION = "v7.10.0-pre1"
 COMPILER_PAGE = (
     "https://github.com/monkeyman192/MBINCompiler/releases/download/" + COMPILER_VERSION
 )
-# SHA-256 of the v7.04.1-pre3 release assets. A different file is refused.
+# SHA-256 of the v7.10.0-pre1 release assets. A different file is refused.
+# v7.14.0-pre1 cannot convert spaceoutpostmissiontable (haulage / courier).
 COMPILER_SHA256 = {
-    "MBINCompiler.exe": "4179dddb665f7cddbe9dddddf6e529172abdd98b0097f65fdd224467d5bb3ea4",
-    "libMBIN.dll": "cc7c35d1bf111a7e01ec933b13b6f879eb95e621c0af2f229dbf492743652184",
-    "MBINCompiler-linux": "f65d5bbd36cc841ec82ee50cec13c99e0f0f6ac433b9135f92e2ad4582d0288d",
-    "libMBIN-linux.so": "02156b615bf2ef68d1d2b28948381875a6ddb4368c6d9aa747729ff545e507fa",
+    "MBINCompiler.exe": "035c5645753be3cced709b9f1bdcd73d25ea9c5e2f06a438dba45a38d11f9b41",
+    "libMBIN.dll": "d6b4bbc1e696456d5cc5b14a8c6af7f2485eeab73dd9fa520efa09c888598d47",
+    "MBINCompiler-linux": "a752007bbf225419dada9eb1f5cb325d5d6f3549a49ca28927c693e590974268",
+    "libMBIN-linux.so": "a284dfb66a60bed1a4e4d097d6e3b87fcf89a24f6607c848bc5fda138f103ec2",
 }
 _KEEP_TABLES = (
     "rewardtable",

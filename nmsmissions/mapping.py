@@ -17,7 +17,7 @@ from pathlib import Path
 
 from nmsmissions import cache_root
 
-MAPPING_VERSION = "v7.04.1-pre3"
+MAPPING_VERSION = "v7.14.0-pre1"
 MAPPING_URL = (
     "https://github.com/monkeyman192/MBINCompiler/releases/download/"
     f"{MAPPING_VERSION}/mapping.json"

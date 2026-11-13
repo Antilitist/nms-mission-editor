@@ -58,17 +58,40 @@ class ReleaseTests(TkCleanup, unittest.TestCase):
     def test_version_file_matches_the_package(self) -> None:
         root = Path(__file__).resolve().parents[1]
         self.assertEqual((root / "VERSION").read_text(encoding="utf-8").strip(), __version__)
-        self.assertEqual(__version__, "1.2.2")
+        self.assertEqual(__version__, "1.3.0")
         text = (root / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertIn('version = "1.2.2"', text)
+        self.assertIn('version = "1.3.0"', text)
         license_text = (root / "LICENSE").read_text(encoding="utf-8")
         self.assertTrue(license_text.startswith("MIT License\n"))
         self.assertNotIn("AI helpers", license_text)
         readme = (root / "README.md").read_text(encoding="utf-8")
         self.assertIn(AI_CREDIT, readme)
+        self.assertEqual(AI_CREDIT, "Grok Bot crew (AI helpers)")
+        self.assertNotIn("Atlas & Nyx", readme)
+        phrase = "built on No Man's Sky 7.05 (build 25625620) and checked on 7.06 (bug-fix patch)"
+        self.assertGreaterEqual(readme.count(phrase), 2)
+        handoff = root / "HANDOFF.md"
+        if handoff.is_file():  # not shipped in the zip
+            self.assertIn(phrase, handoff.read_text(encoding="utf-8").splitlines()[2])
+        shot_line = (root / "screenshots" / "README.txt").read_text(encoding="utf-8").splitlines()[4]
+        self.assertIn(phrase, shot_line)
         bat = (root / "Start.bat").read_text(encoding="utf-8")
-        self.assertIn("REM NMS Mission Editor 1.2.2", bat)
+        self.assertIn("REM NMS Mission Editor 1.3.0", bat)
         self.assertNotIn("1.0.6", bat)
+
+    def test_readme_forks_and_reuse(self) -> None:
+        readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+        self.assertIn("## Forks and reuse", readme)
+        section = readme.split("## Forks and reuse", 1)[1]
+        next_heading = section.find("\n## ")
+        if next_heading != -1:
+            section = section[:next_heading]
+        self.assertIn("MIT", section)
+        self.assertIn("LICENSE", section)
+        self.assertIn("Sam", section)
+        self.assertIn("Avea", section)
+        self.assertIn("Antilitist", section)
+        self.assertIn("https://github.com/Antilitist/nms-mission-editor", section)
 
     def test_zip_allowlist_has_no_personal_data(self) -> None:
         self._need_release()
@@ -231,6 +254,10 @@ class ReleaseTests(TkCleanup, unittest.TestCase):
             self.assertIn("Back up your save", message)
             self.assertIn("own risk", message)
             self.assertIn("111", message)
+            self.assertIn(
+                "built on No Man's Sky 7.05 (build 25625620) and checked on 7.06 (bug-fix patch)",
+                message,
+            )
 
             (library / "steamapps" / "appmanifest_275850.acf").write_text(
                 f'"buildid" "{TESTED_BUILD}"\n',
@@ -239,6 +266,10 @@ class ReleaseTests(TkCleanup, unittest.TestCase):
             same = discover({"NMS_INSTALL": str(install), "APPDATA": str(root / "AppData")})
             self.assertFalse(same.version_differs)
             self.assertIn("7.05", same.version_line)
+            self.assertIn(
+                "built on No Man's Sky 7.05 (build 25625620) and checked on 7.06 (bug-fix patch)",
+                same.version_line,
+            )
             missing = discover({"NMS_STEAM_ROOT": str(root / "missing"), "APPDATA": str(root / "missing")})
             self.assertIsNone(missing.install)
             self.assertEqual(missing.saves, [])
@@ -254,6 +285,10 @@ class ReleaseTests(TkCleanup, unittest.TestCase):
         self.assertIn(expected, about_body())
         self.assertIn(CREDIT, about_body())
         self.assertIn(AI_CREDIT, about_body())
+        self.assertIn(
+            "built on No Man's Sky 7.05 (build 25625620) and checked on 7.06 (bug-fix patch)",
+            about_body(),
+        )
         readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
         self.assertIn(expected, readme)
         self.assertNotIn("{X_MONEY_HANDLE}", readme)
@@ -273,7 +308,10 @@ class ReleaseTests(TkCleanup, unittest.TestCase):
             folder = Path(tmp)
             path = _write_pair(folder, "save.hg", body)
             session = EditorSession(path, backup_dir=folder / "backups")
-            session.version_note = "Detected build 111. This tool was tested on No Man's Sky 7.05 (build 25625620)."
+            session.version_note = (
+                "Detected build 111. This tool was built on No Man's Sky 7.05 "
+                "(build 25625620) and checked on 7.06 (bug-fix patch)."
+            )
             chain = ChainView("artemis", "Artemis Path", "story", 0, None, None, [], [], [], False)
             window = tk.Tk()
             window.withdraw()
@@ -291,12 +329,19 @@ class ReleaseTests(TkCleanup, unittest.TestCase):
                 widgets = list(_walk(window))
                 labels = [str(widget.cget("text")) for widget in widgets if isinstance(widget, tk.Label)]
                 self.assertTrue(any("Use at your own risk" in text and "25625620" in text for text in labels))
+                self.assertTrue(
+                    any(
+                        "built on No Man's Sky 7.05 (build 25625620) and checked on 7.06 (bug-fix patch)"
+                        in text
+                        for text in labels
+                    )
+                )
                 self.assertTrue(any("Detected build 111" in text for text in labels))
                 about = _one(widgets, ttk.Button, "About / Tip me")
                 with patch("tkinter.messagebox.showinfo") as info:
                     about.invoke()
                 text = info.call_args.args[1]
-                self.assertIn("1.2.2", text)
+                self.assertIn("1.3.0", text)
                 self.assertIn("X Money: Antilitist", text)
                 self.assertIn("Cash App", text)
                 self.assertIn(CREDIT, text)

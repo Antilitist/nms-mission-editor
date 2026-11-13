@@ -7,3 +7,6 @@ The YAML files in this directory come from
 Each row is a mission id and the progress value seen on a finished save
 (`^MISSION_ID: number`). Chain order and prerequisites live in `../chains.yaml`
 and were written for this viewer. They are not part of that project.
+
+`sidemission_Space_Courier.yaml` was written for this editor (Space Courier
+and Corvette Haulage from 7.10+). It is not from the okranger tables.

@@ -5,10 +5,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-__version__ = "1.2.2"
+__version__ = "1.3.0"
 
 CREDIT = "Sam (Coder), Avea (Art) & Antilitist (Tester, Coder, Modder)"
-AI_CREDIT = "Atlas & Nyx (AI helpers)"
+AI_CREDIT = "Grok Bot crew (AI helpers)"
 # Handle only. Shown in the About box and the README tip line.
 X_MONEY_HANDLE = "Antilitist"
 CASH_APP = "$Antilitist"
@@ -23,7 +23,7 @@ def tip_text() -> str:
 
 def about_body(version_note: str = "") -> str:
     """Plain About text. Handles only."""
-    from nmsmissions.locate import TESTED_BUILD, TESTED_PATCH
+    from nmsmissions.locate import support_phrase
 
     lines = [
         f"NMS Mission Editor {__version__}",
@@ -31,7 +31,7 @@ def about_body(version_note: str = "") -> str:
         CREDIT,
         AI_CREDIT,
         "",
-        f"Tested on No Man's Sky {TESTED_PATCH} (build {TESTED_BUILD}).",
+        f"This tool was {support_phrase()}.",
         "Use at your own risk.",
     ]
     note = version_note.strip()

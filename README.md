@@ -1,26 +1,32 @@
 # NMS Mission Editor
 
-Version 1.2.2.
+Version 1.3.0.
 
 Edit No Man's Sky mission progress on a **copy** of your save.
 Then put that copy back into the game when you are ready.
 
 Sam (Coder), Avea (Art) & Antilitist (Tester, Coder, Modder)
 
-Atlas & Nyx (AI helpers)
+Grok Bot crew (AI helpers)
 
 ## Before you start
 
 - Back up your save first. The tool also makes a zip. Keep your own copy too.
 - Close No Man's Sky before you write.
 - If Steam Cloud is on, it can put an old file back. Turn Cloud off for No Man's Sky while you test.
-- Tested on No Man's Sky **7.05** (build **25625620**).
+- This tool was built on No Man's Sky 7.05 (build 25625620) and checked on 7.06 (bug-fix patch).
+- If this save is not that format, editing pauses so the save stays safe. You can still look. Click "I made a backup, edit anyway" to write. The tool still makes its own zip first.
 - Use at your own risk.
 - This zip does not include game files. Click **Read my game files** and the tool reads names from your own install.
 
 The window shows the same warning at startup.
 It also shows the build it detected.
 If that build is not 25625620, the warning says so.
+
+## New in 1.3.0
+
+- **Save safety check.** Before every write, the tool checks the save version and the parts it edits. If the save looks different from the one the tool knows, editing pauses and you can still look. "I made a backup, edit anyway" turns writing back on.
+- **Space Courier and Corvette Haulage** (from Forsaken 7.10 and 7.13) show as named quest lines. The names are read from the game tables (MBINCompiler v7.10.0-pre1) when you click **Read my game files**.
 
 ## What it does
 
@@ -187,7 +193,9 @@ It is not installed into a slot.
 If the line already says 5/5 but purple stars are still off, Finish whole quest line stays available.
 The preview then lists only the missing unlock. The steps stay as they are.
 
-## Restore a backup
+## Back up and restore
+
+Click **Back up this save now** to make a zip of your copy. The game file is not changed.
 
 1. Click **Restore a backup**.
 2. Pick the zip. The name has the date, the time, and the slot.
@@ -199,12 +207,13 @@ The preview then lists only the missing unlock. The steps stay as they are.
 
 ## If the game updated
 
-This tool was checked on No Man's Sky 7.05, build 25625620.
+This tool was built on No Man's Sky 7.05 (build 25625620) and checked on 7.06 (bug-fix patch).
 
 After a game update:
 
 - The startup box names the new build when it can read it.
 - A different build can change mission data. Read the warning before you write.
+- Mission names were checked against the game files of build 26386568 (7.13). Save files were checked on the 7.06 format (save version 4739). No save from the Forsaken patches (7.10 to 7.14) has been tested yet. If your save is newer, the tool pauses editing and tells you.
 - Finish values and mission names come from your install, not from this zip.
 - If names look wrong after a game update, or the Corvette page says the part table is missing, click **Read my game files** again.
 - This zip never includes those extracted files.
@@ -226,5 +235,11 @@ Handles only.
 ## About
 
 Open **About / Tip me** in the window for the version, the credits, and the tip line.
+
+## Forks and reuse
+
+Keep the LICENSE file with any copy or fork. This project is MIT.
+Credit Sam, Avea & Antilitist.
+The upstream project is https://github.com/Antilitist/nms-mission-editor
 
 Screenshots to add later are listed in `screenshots/README.txt`.

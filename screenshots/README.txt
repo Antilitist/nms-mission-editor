@@ -2,7 +2,7 @@ Screenshots to take before you share the zip.
 Put the image files in this folder. Do not put save files here.
 
 1. startup-warning.png
-   The "Before you edit a save" box. It names the backup, closing the game, NMS 7.05 build 25625620, and use at your own risk. Include the detected version line.
+   The "Before you edit a save" box. It names the backup, closing the game, built on No Man's Sky 7.05 (build 25625620) and checked on 7.06 (bug-fix patch), and use at your own risk. Include the detected version line.
 
 2. slot-picker.png
    The save slot list after Start.bat, or the folder picker when no save folder was found.

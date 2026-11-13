@@ -16,9 +16,19 @@ from nmsmissions.slots import nms_save_folders
 TESTED_PATCH = "7.05"
 TESTED_BUILD = "25625620"
 NMS_APP_ID = "275850"
+
+
+def support_phrase() -> str:
+    """User-facing game-version note. Notes about the 7.05 tables stay as they are."""
+    return (
+        f"built on No Man's Sky {TESTED_PATCH} (build {TESTED_BUILD}) "
+        "and checked on 7.06 (bug-fix patch)"
+    )
+
+
 SAFETY_LINE = (
     "Back up the save first. Close No Man's Sky. "
-    f"Tested on No Man's Sky {TESTED_PATCH} (build {TESTED_BUILD}). "
+    f"This tool was {support_phrase()}. "
     "Use at your own risk."
 )
 _PATH_KEY = re.compile(r'"path"\s+"([^"]+)"')
@@ -42,15 +52,16 @@ def tested_label() -> str:
 def version_line(build_id: str) -> tuple[str, bool]:
     """Words for the detected build, and whether it is not the tested build."""
     tested = tested_label()
+    note = f"This tool was {support_phrase()}."
     if build_id == TESTED_BUILD:
-        return f"Detected {tested}.", False
+        return f"Detected {tested}. {note}", False
     if build_id:
         return (
-            f"Detected build {build_id}. This tool was tested on {tested}. "
+            f"Detected build {build_id}. {note} "
             "A different build can change mission data.",
             True,
         )
-    return f"Game version was not detected. This tool was tested on {tested}.", True
+    return f"Game version was not detected. {note}", True
 
 
 def startup_message(found: Discovery) -> str:
@@ -58,7 +69,7 @@ def startup_message(found: Discovery) -> str:
         [
             "Back up your save before you write.",
             "Close No Man's Sky. If Steam Cloud is on, it can put an old file back.",
-            f"Tested on {tested_label()}.",
+            f"This tool was {support_phrase()}.",
             "Use at your own risk.",
             "",
             found.version_line,

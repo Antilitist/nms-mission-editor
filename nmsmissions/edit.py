@@ -27,6 +27,7 @@ from nmsmissions.chunks import SaveFormatError, pack_chunks, unpack_save
 from nmsmissions.diffing import save_slot
 from nmsmissions.gamedata import GameTables, final_progress, load_tables
 from nmsmissions.guard import is_live_nms_save
+from nmsmissions.patchcheck import OVERRIDE_LINE, PAUSE_MESSAGE, assess
 from nmsmissions.manifest import (
     Manifest,
     ManifestError,
@@ -165,6 +166,7 @@ class EditRequest:
     station_guild: str | None = None
     stack_size: int = 1
     preserve_backups: bool = False
+    edit_anyway: bool = False
 
 
 @dataclass
@@ -545,6 +547,13 @@ def collect_checks(
         checks.append(Check("fail", "No Man's Sky is running. Close it before writing a save."))
     else:
         checks.append(Check("ok", "No Man's Sky is not running."))
+    verdict = assess(snap.parsed)
+    if verdict.ok:
+        checks.append(Check("ok", "This save matches the format this editor knows."))
+    elif request.edit_anyway:
+        checks.append(Check("warn", OVERRIDE_LINE))
+    else:
+        checks.append(Check("fail", PAUSE_MESSAGE))
     slot = save_slot(snap.path)
     if is_live_nms_save(snap.path):
         if request.live and request.confirm_slot == slot:
@@ -730,6 +739,9 @@ def commit(
         return 2, None
     if not plan.changes:
         return 3, None
+    verdict = assess(snap.parsed)
+    if not verdict.ok and not request.edit_anyway:
+        raise EditError(PAUSE_MESSAGE, code=2)
     if not _snapshot_matches(snap):
         raise EditError("The game saved again. Reload first.", code=2)
     if game_is_running(running):
@@ -3052,6 +3064,9 @@ class EditorSession:
         self._warm: threading.Thread | None = None
         self._warm_gen = 0
         self._warm_error: Exception | None = None
+        self.edit_anyway = False
+        self.patch_blocked = False
+        self.patch_pending = True
 
     def _save_key(self) -> tuple:
         path = Path(self.save).resolve()
@@ -3069,6 +3084,8 @@ class EditorSession:
             self._snap_key = None
             self._reasons = {}
             self._snap_gen += 1
+            self.patch_pending = True
+            self.patch_blocked = False
 
     def peek_snapshot(self) -> Snapshot | None:
         """The snapshot already in memory, or None. This does not read the file."""
@@ -3093,13 +3110,7 @@ class EditorSession:
                 generation = self._snap_gen
             with timed("snapshot-load"):
                 snap = take_snapshot(self.save)
-            with self._snap_lock:
-                if generation != self._snap_gen:
-                    return snap
-                self._snap = snap
-                self._snap_key = self._save_key()
-                self._reasons = {}
-            return snap
+            return self._publish_snapshot(snap, generation)
 
     def ensure_snapshot(self) -> Snapshot:
         """Parse the save on this thread and store it. The window thread must not call this."""
@@ -3127,14 +3138,22 @@ class EditorSession:
                 snap = call_in_pool(_snapshot_job, (str(path.resolve()),))
             else:
                 snap = take_snapshot(path)
-            with self._snap_lock:
-                if generation != self._snap_gen:
-                    return snap
-                self._snap = snap
-                self._snap_key = self._save_key()
-                self._reasons = {}
+            snap = self._publish_snapshot(snap, generation)
             _partner_problem(snap)
             return snap
+
+    def _publish_snapshot(self, snap: Snapshot, generation: int) -> Snapshot:
+        """Store a snapshot and the format check together. The walk stays outside the lock."""
+        verdict = assess(snap.parsed)
+        with self._snap_lock:
+            if generation != self._snap_gen:
+                return snap
+            self._snap = snap
+            self._snap_key = self._save_key()
+            self._reasons = {}
+            self.patch_blocked = not verdict.ok
+            self.patch_pending = False
+        return snap
 
     def working_snapshot(self) -> Snapshot:
         return fork_snapshot(self.cached_snapshot())
@@ -3351,6 +3370,7 @@ class EditorSession:
             station_race=station_race,
             station_guild=station_guild,
             stack_size=stack_size,
+            edit_anyway=self.edit_anyway,
         )
         with timed("plan-for"):
             snap = self.working_snapshot()
@@ -3397,6 +3417,7 @@ class EditorSession:
         request.apply = True
         request.live = self.live
         request.confirm_slot = self.confirm_slot
+        request.edit_anyway = self.edit_anyway
         plan.checks = collect_checks(request, snap, tables, running=running)
         if plan.failing():
             return 2, format_plan(plan, dry_run=True)

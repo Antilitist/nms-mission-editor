@@ -223,6 +223,32 @@ class ChainTests(unittest.TestCase):
         ]
         self.assertEqual(missing, [])
 
+    def test_space_courier_and_corvette_haulage_show_named(self):
+        by_id = {chain.chain_id: chain for chain in self.chains}
+        self.assertEqual(by_id["courier"].title, "Space Courier")
+        self.assertEqual(by_id["haulage"].title, "Corvette Haulage")
+        self.assertEqual(
+            [step.mission_id for step in by_id["courier"].steps],
+            ["^SO_POSTIE_PL_SR"],
+        )
+        self.assertEqual(
+            [step.mission_id for step in by_id["haulage"].steps],
+            ["^SO_POSTIE_ST_SR"],
+        )
+        self.assertEqual(by_id["courier"].steps[0].title, "Space Courier")
+        self.assertEqual(by_id["haulage"].steps[0].title, "Corvette Haulage")
+        self.assertEqual(self.catalog["^SO_POSTIE_PL_SR"], 12)
+        self.assertEqual(self.catalog["^SO_POSTIE_ST_SR"], 12)
+        roots, _other = build_views(self.chains, {}, self.catalog, None, {})
+        rows = forest_rows(roots, other=_other)
+        by_text = {row["text"]: row for row in rows}
+        self.assertEqual(by_text["Space Courier"]["parent"], "")
+        self.assertEqual(by_text["Corvette Haulage"]["parent"], "")
+        planet = next(row for row in rows if row.get("mission_id") == "^SO_POSTIE_PL_SR")
+        station = next(row for row in rows if row.get("mission_id") == "^SO_POSTIE_ST_SR")
+        self.assertEqual(planet["name"], "Space Courier")
+        self.assertEqual(station["name"], "Corvette Haulage")
+
     def test_wiki_prerequisite_graph(self):
         by_id = {chain.chain_id: chain for chain in self.chains}
         self.assertEqual(by_id["twr"].requires, ("artemis",))
@@ -1487,8 +1513,8 @@ class GameNameTests(unittest.TestCase):
             from nmsmissions import __version__
 
             cached = json.loads(cache.read_text(encoding="utf-8"))
-            self.assertEqual(__version__, "1.2.2")
-            self.assertEqual(cached["tool"], "1.2.2")
+            self.assertEqual(__version__, "1.3.0")
+            self.assertEqual(cached["tool"], "1.3.0")
             self.assertEqual(cached["version"], CACHE_VERSION)
             cached["source"] = "0" * 16
             cached["tool"] = "0.0.0"
@@ -1647,6 +1673,16 @@ class WikiTests(unittest.TestCase):
         self.assertEqual(
             chains["weapons"].wiki,
             "https://nomanssky.fandom.com/wiki/Weapons_Specialist",
+        )
+        self.assertFalse(chains["courier"].wiki_confirmed)
+        self.assertEqual(
+            chains["courier"].wiki,
+            "https://nomanssky.fandom.com/wiki/Space_Courier",
+        )
+        self.assertFalse(chains["haulage"].wiki_confirmed)
+        self.assertEqual(
+            chains["haulage"].wiki,
+            "https://nomanssky.fandom.com/wiki/Corvette_Haulage",
         )
         roots, other = build_views(load_chains(), {}, load_completion_catalog(), None, {})
         rows = forest_rows(roots, other)

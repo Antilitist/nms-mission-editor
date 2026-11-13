@@ -893,6 +893,81 @@ def set_status(window, text: str) -> None:
             return
 
 
+_PAUSE_COMMANDS = (
+    "Restore a backup...",
+    "Put edited save into my game",
+    "Undo last put-into-game",
+)
+
+
+def writes_paused(session) -> bool:
+    """True when this save must not be written. An override turns the pause off."""
+    if session is None or getattr(session, "edit_anyway", False):
+        return False
+    if getattr(session, "patch_pending", False):
+        return True
+    return bool(getattr(session, "patch_blocked", False))
+
+
+def _apply_pause_controls(window, paused: bool) -> None:
+    state = ["disabled"] if paused else ["!disabled"]
+    for button in getattr(window, "_pause_buttons", ()) or ():
+        try:
+            button.state(state)
+        except Exception:
+            pass
+    menu = getattr(window, "_pause_menu", None)
+    if menu is None:
+        return
+    menu_state = "disabled" if paused else "normal"
+    for label in _PAUSE_COMMANDS:
+        try:
+            menu.entryconfig(label, state=menu_state)
+        except Exception:
+            pass
+
+
+def sync_patch_gate(window, session) -> None:
+    """Show or hide the format warning. Write buttons follow the same flag."""
+    frame = getattr(window, "_patch_frame", None)
+    if frame is None or session is None:
+        return
+    from nmsmissions.patchcheck import PAUSE_MESSAGE
+
+    label = window._patch_warning
+    button = window._patch_override
+    blocked = bool(getattr(session, "patch_blocked", False)) and not getattr(session, "edit_anyway", False)
+    allowed = bool(getattr(session, "patch_blocked", False)) and bool(getattr(session, "edit_anyway", False))
+    pending = bool(getattr(session, "patch_pending", False)) and session.peek_snapshot() is None
+    if blocked or allowed:
+        text = PAUSE_MESSAGE
+        if allowed:
+            text += "\nEditing is on. A backup is still made before each write."
+        else:
+            text += "\nYou can still look through this save."
+        label.configure(text=text)
+        if not frame.winfo_ismapped():
+            frame.pack(fill="x", after=window._patch_anchor)
+        button.state(["disabled"] if allowed else ["!disabled"])
+    elif pending:
+        label.configure(text="Checking this save's format.")
+        if not frame.winfo_ismapped():
+            frame.pack(fill="x", after=window._patch_anchor)
+        button.state(["disabled"])
+    else:
+        label.configure(text="")
+        if frame.winfo_ismapped():
+            frame.pack_forget()
+    _apply_pause_controls(window, writes_paused(session))
+    refresh = getattr(window, "_refresh_actions", None)
+    if refresh is not None:
+        refresh()
+    for name in ("_refresh_station", "_refresh_corvette"):
+        other = getattr(window, name, None)
+        if other is not None:
+            other()
+
+
 def launch(
     title: str,
     subtitle: str,
@@ -964,9 +1039,40 @@ def launch(
         fg="#8a3b12",
     )
     safety.pack(fill="x")
+    patch_frame = tk.Frame(window)
+    patch_warning = tk.Label(
+        patch_frame,
+        text="",
+        wraplength=800,
+        justify="left",
+        anchor="w",
+        padx=8,
+        pady=4,
+        fg="#9b1c1c",
+    )
+    patch_warning.pack(fill="x")
+    patch_button = ttk.Button(patch_frame, text="I made a backup, edit anyway")
+
+    def _allow_patch_edit() -> None:
+        if session is None:
+            return
+        session.edit_anyway = True
+        sync_patch_gate(window, session)
+
+    patch_button.configure(command=_allow_patch_edit)
+    patch_button.pack(anchor="w", padx=8, pady=(0, 6))
+    add_tip(
+        patch_button,
+        "Turn editing back on for this save. A zip is still made before each write.",
+    )
+    window._patch_frame = patch_frame
+    window._patch_warning = patch_warning
+    window._patch_override = patch_button
+    window._patch_anchor = safety
+    window._pause_buttons = []
     status = tk.Label(window, text="", wraplength=800, justify="left", anchor="w", padx=8, pady=4)
     status.pack(fill="x")
-    _follow_width(window, banner, safety, status)
+    _follow_width(window, banner, safety, status, patch_warning)
     status_box = {"error": ""}
     status_stop = {"flag": False}
     armed: list = []
@@ -1026,9 +1132,16 @@ def launch(
                     from nmsmissions.edit import nms_is_running, note_nms_running
 
                     with timed("status-poll"):
-                        note_nms_running(nms_is_running())
+                        running = nms_is_running()
+                    # tasklist can finish after the window is gone. Drop that
+                    # answer so it cannot fill the cache a later window just cleared.
+                    if status_stop["flag"]:
+                        break
+                    note_nms_running(running)
                     status_box["error"] = ""
                 except Exception as exc:
+                    if status_stop["flag"]:
+                        break
                     status_box["error"] = str(exc)
                 remain = 4.0 - (time.monotonic() - started)
                 while remain > 0 and not status_stop["flag"]:
@@ -1037,6 +1150,16 @@ def launch(
                     remain -= step
 
         threading.Thread(target=_watch_status, name="nms-status", daemon=True).start()
+        _original_destroy = window.destroy
+
+        def _destroy_window():
+            # The close button sets this too. Destroying the Tk object directly
+            # (tests, and any other caller) must stop the poll the same way.
+            # The Destroy binding cancels pending after callbacks.
+            status_stop["flag"] = True
+            return _original_destroy()
+
+        window.destroy = _destroy_window
 
     refresh_status()
 
@@ -1235,6 +1358,9 @@ def launch(
             refresh_corvette = getattr(window, "_refresh_corvette", None)
             if refresh_corvette is not None:
                 refresh_corvette()
+            sync = getattr(window, "_sync_patch_gate", None)
+            if sync is not None:
+                sync()
 
         window._reload_apply = apply
         worker = threading.Thread(target=work, name="nms-reload", daemon=True)
@@ -1273,6 +1399,8 @@ def launch(
         edit_buttons = _editor_bar(
             window, tree, session, by_iid, banner, reload_rows, refresh_status, before=notebook
         )
+        window._sync_patch_gate = lambda: sync_patch_gate(window, session)
+        sync_patch_gate(window, session)
         need_names = session.game_files is not None and getattr(session, "_names_report", None) is None
         need_tables = bool(session.game_files) and not session.tables_cached()
         if need_names or need_tables:
@@ -1480,6 +1608,7 @@ def launch(
     def _remember_window(event=None) -> None:
         if event is not None and getattr(event, "widget", None) is not window:
             return
+        status_stop["flag"] = True
         _disarm()
         _track_window()
         save_window_settings(window, remembered)
@@ -1612,14 +1741,20 @@ def _station_page(window, page, session, banner, reload_rows, refresh_status) ->
     actions.pack(fill="x", pady=(8, 0))
 
     def refresh(*_args: object) -> None:
-        if session is None:
-            body.configure(text=panel_text(None, opened=False))
-            return
-        snap = session.peek_snapshot()
-        if snap is None:
-            body.configure(text=panel_text(None, loading=True))
-            return
-        body.configure(text=panel_text(snap.player))
+        try:
+            if session is None:
+                body.configure(text=panel_text(None, opened=False))
+                return
+            snap = session.peek_snapshot()
+            if snap is None:
+                body.configure(text=panel_text(None, loading=True))
+                return
+            body.configure(text=panel_text(snap.player))
+        finally:
+            if session is None or writes_paused(session):
+                button.state(["disabled"])
+            else:
+                button.state(["!disabled"])
 
     def refresh_choice(*_args: object) -> None:
         text = meet_does(race_var.get() or None, guild_var.get() or None)
@@ -1629,6 +1764,11 @@ def _station_page(window, page, session, banner, reload_rows, refresh_status) ->
     def meet() -> None:
         if session is None:
             messagebox.showinfo("Station and standing", "Open a save first.")
+            return
+        if writes_paused(session):
+            from nmsmissions.patchcheck import PAUSE_MESSAGE
+
+            messagebox.showinfo("Editing is paused", PAUSE_MESSAGE, parent=window)
             return
         race_id = race_var.get()
         guild_id = guild_var.get()
@@ -1690,39 +1830,50 @@ def _corvette_page(window, page, session, banner, reload_rows, refresh_status) -
     ready = {"cap": 0, "filled": False, "reread": False}
 
     def refresh(*_args: object) -> None:
-        if session is None:
-            body.configure(text=panel_text(None, None, 0))
-            return
-        snap = session.peek_snapshot()
-        if snap is None:
-            body.configure(text=panel_text(None, [], 0, loading=True))
-            return
-        if session.game_files is None:
-            body.configure(text=panel_text(snap.player, None, 0))
-            cap_label.configure(text="")
-            return
-        if not session.tables_cached():
-            body.configure(text=panel_text(snap.player, [], 0, loading=True))
-            return
-        tables = session.cached_tables()
-        parts = parts_from_tables(tables) if tables is not None else []
-        cap = stack_cap_from_tables(tables) if tables is not None else 0
-        reread = bool(getattr(tables, "corvette_needs_reread", False)) if tables is not None else False
-        ready["cap"] = cap
-        ready["reread"] = reread
-        body.configure(text=panel_text(snap.player, parts, cap, reread=reread))
-        if cap:
-            spin.configure(to=cap)
-            cap_label.configure(text=f"up to {cap}")
-            if not ready["filled"]:
-                stack_var.set(str(cap))
-                ready["filled"] = True
-        else:
-            cap_label.configure(text="")
+        try:
+            if session is None:
+                body.configure(text=panel_text(None, None, 0))
+                return
+            snap = session.peek_snapshot()
+            if snap is None:
+                body.configure(text=panel_text(None, [], 0, loading=True))
+                return
+            if session.game_files is None:
+                body.configure(text=panel_text(snap.player, None, 0))
+                cap_label.configure(text="")
+                return
+            if not session.tables_cached():
+                body.configure(text=panel_text(snap.player, [], 0, loading=True))
+                return
+            tables = session.cached_tables()
+            parts = parts_from_tables(tables) if tables is not None else []
+            cap = stack_cap_from_tables(tables) if tables is not None else 0
+            reread = bool(getattr(tables, "corvette_needs_reread", False)) if tables is not None else False
+            ready["cap"] = cap
+            ready["reread"] = reread
+            body.configure(text=panel_text(snap.player, parts, cap, reread=reread))
+            if cap:
+                spin.configure(to=cap)
+                cap_label.configure(text=f"up to {cap}")
+                if not ready["filled"]:
+                    stack_var.set(str(cap))
+                    ready["filled"] = True
+            else:
+                cap_label.configure(text="")
+        finally:
+            if session is None or writes_paused(session):
+                button.state(["disabled"])
+            else:
+                button.state(["!disabled"])
 
     def fill() -> None:
         if session is None:
             messagebox.showinfo("Corvette parts", "Open a save first.")
+            return
+        if writes_paused(session):
+            from nmsmissions.patchcheck import PAUSE_MESSAGE
+
+            messagebox.showinfo("Editing is paused", PAUSE_MESSAGE, parent=window)
             return
         if session.game_files is None:
             messagebox.showinfo("Corvette parts", NEED_FILES)
@@ -1783,6 +1934,11 @@ def _editor_bar(window, tree, session, by_iid: dict, banner, reload_rows, refres
         return by_iid.get(picked[0])
 
     def prepare(action: str, chain: bool) -> None:
+        if writes_paused(session):
+            from nmsmissions.patchcheck import PAUSE_MESSAGE
+
+            messagebox.showinfo("Editing is paused", PAUSE_MESSAGE, parent=window)
+            return
         row = selected()
         if is_quest_line(row):
             if chain:
@@ -1913,6 +2069,15 @@ def _editor_bar(window, tree, session, by_iid: dict, banner, reload_rows, refres
     def refresh_unlock(*_args: object) -> None:
         if unlock_button is None or unlock_cover is None:
             return
+        if writes_paused(session):
+            from nmsmissions.patchcheck import PAUSE_MESSAGE
+
+            for holder in unlock_tips:
+                set_tip(holder, PAUSE_MESSAGE)
+            unlock_button.state(["disabled"])
+            unlock_cover.place(relx=0, rely=0, relwidth=1, relheight=1)
+            unlock_cover.lift()
+            return
         row = selected()
         line = is_quest_line(row)
         if session.game_files and not session.tables_cached():
@@ -2002,10 +2167,13 @@ def _editor_bar(window, tree, session, by_iid: dict, banner, reload_rows, refres
             set_tip(tips["unlock"], labels["unlock_tip"])
         loading = bool(session.game_files) and not session.tables_cached()
         has_row = bool(tree.selection())
+        paused = writes_paused(session)
         for key, button in named.items():
             if button is unlock_button:
                 continue
-            if line and key in {"finish_to", "reset_from"}:
+            if paused:
+                button.state(["disabled"])
+            elif line and key in {"finish_to", "reset_from"}:
                 button.state(["disabled"])
             elif key == "finish" and line_finished and not missing_unlocks:
                 button.state(["disabled"])
@@ -2324,13 +2492,27 @@ def _save_menu(window, session, banner, refresh_status, reload_rows) -> None:
         messagebox.showinfo("Back up", f"Backup saved.\n{path}\nThe save was not changed.")
         _keep_banner(banner, f"Backup: {path}", "#0b6e4f")
 
+    def _paused_write() -> bool:
+        if not writes_paused(session):
+            return False
+        from nmsmissions.patchcheck import PAUSE_MESSAGE
+
+        messagebox.showinfo("Editing is paused", PAUSE_MESSAGE, parent=window)
+        return True
+
     def restore() -> None:
+        if _paused_write():
+            return
         _restore_dialog(window, session, banner, refresh_status, reload_rows)
 
     def install() -> None:
+        if _paused_write():
+            return
         _install_dialog(window, session, banner, refresh_status)
 
     def undo() -> None:
+        if _paused_write():
+            return
         _undo_dialog(window, session, banner, refresh_status, reload_rows)
 
     def about() -> None:
@@ -2352,6 +2534,7 @@ def _save_menu(window, session, banner, refresh_status, reload_rows) -> None:
         save_menu.add_command(label=label, command=command)
     menu.add_cascade(label="Save", menu=save_menu)
     window.config(menu=menu)
+    window._pause_menu = save_menu
 
     row = ttk.Frame(window, padding=(8, 0, 8, 4))
     row.pack(fill="x", before=banner)
@@ -2421,6 +2604,8 @@ def _save_menu(window, session, banner, refresh_status, reload_rows) -> None:
         button = ttk.Button(row, text=label, command=command)
         button.pack(side="left", padx=(0, 6))
         add_tip(button, tips[label])
+        if label in _PAUSE_COMMANDS:
+            window._pause_buttons.append(button)
 
 
 def _copy_root(session):
@@ -2439,6 +2624,7 @@ def _adopt(session, result) -> None:
     session.slot = result.slot
     session.account = result.account
     session.live = is_live_nms_save(result.copy_path)
+    session.edit_anyway = False
     hook = getattr(session, "on_save_path", None)
     if hook is not None:
         hook(result.copy_path)

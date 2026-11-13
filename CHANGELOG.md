@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.0
+
+- The AI helpers credit now reads Grok Bot crew (README and About box).
+- Before a write, the editor checks the save version, the top-level keys, and the fields it changes. Save version 4739 is the known 7.06 format. If something is unknown or missing, editing pauses. The window says: "This save is from a newer game version. Editing is paused to keep your save safe." You can still look through the save. "I made a backup, edit anyway" turns writing back on, and the automatic backup still runs.
+- Mapping download pins MBINCompiler `mapping.json` v7.14.0-pre1. That file has the same keys as v7.10.0-pre1. Fields this tool reads were already in the 7.04 mapping.
+- Read my game files uses MBINCompiler v7.10.0-pre1. The 7.04 compiler left 7.10+ mission tables binary. v7.14.0-pre1 cannot convert the space-outpost table, so Space Courier and Corvette Haulage names would be missing.
+- Space Courier (`^SO_POSTIE_PL_SR`) and Corvette Haulage (`^SO_POSTIE_ST_SR`) show as named side chains.
+
+## 1.2.3
+
+- Closing the window stops the running-game check. A check that finishes after the window is gone does not fill the cache the next window reads.
+- Forks and reuse: keep the MIT LICENSE, and credit Sam, Avea & Antilitist, with a link to the upstream project.
+- User-facing notes now say the tool was built on No Man's Sky 7.05 (build 25625620) and checked on 7.06 (bug-fix patch). Notes about the 7.05 tables are unchanged.
+
 ## 1.2.2
 
 - A part with no category is included only when the build menu marks it as ship structure. The ship decoration flag also marks ordinary base items, and those stay out.
